@@ -1,0 +1,169 @@
+using System;
+using System.Collections;
+using System.ComponentModel;
+using System.Drawing;
+using System.Web;
+using System.Web.SessionState;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.HtmlControls;
+using Infragistics.WebUI.UltraWebGrid;
+namespace CRM
+{
+	/// <summary>
+	/// PageBase 的摘要说明。
+	/// </summary>
+	public class PageBase: System.Web.UI.Page
+	{
+		private void Page_Load(object sender, System.EventArgs e)
+		{
+			// 在此处放置用户代码以初始化页面
+			initpate();
+			eachctl(Page.Controls);//处理控件样式
+		}
+		private void initpate()
+		{
+			//样式表文件路径
+			string strlink="<script language=javascript src=\"../../../Scripts/Script.js\"></script>";//"<LINK href=\"css/pageins.css\" type=\"text/css\" rel=\"stylesheet\">";
+			
+			string strscript="<script language=\"javascript\">"+
+				" function setoverbutton(name,frmname) "+
+				" { "+
+				" document.forms[frmname].elements[name].className='btn_Bg1_Over';"+//鼠标移到
+				" } "+
+				" function setoutbutton(name) "+
+				" { "+
+				" document.forms[0].elements[name].className='btn_Bg1' ;"+  //鼠标移开
+				" } "+
+				" function setonmousedown(name) "+
+				" { "+
+				" document.forms[0].elements[name].className='ButtonDown' ;"+//鼠标按下
+				" } "+
+				" function setonmouseup(name) "+
+				" { "+
+				" document.forms[0].elements[name].className='ButtonUp'; "+//鼠标抬起
+				" } "+
+				" </script> ";
+			Literal lit=(Literal)Page.FindControl("Literal");
+			if(lit==null)
+			{
+				//注册客户端脚本
+				Page.RegisterClientScriptBlock("styleblock",strlink+" "+strscript); 
+			}
+			else
+			{
+				lit.Text=strlink+" "+strscript;
+			}
+				
+			
+
+		}
+		/// <summary>
+		/// 处理控件样式
+		/// </summary>
+		/// <param name="ctl">要处理的控件集合</param>
+		private void eachctl(ControlCollection ctl)
+		{
+			//设置按钮样式
+			foreach(Control cl in ctl)
+			{			
+				
+				
+				if(cl.ToString()=="System.Web.UI.WebControls.Button")
+				{	//服务器端按钮设置
+//					((Button)cl).CssClass="btn_Bg1";
+//					((Button)cl).Attributes.Add("onmouseover","this.className='btn_Bg1_Over'");  //鼠标悬浮样式
+//					((Button)cl).Attributes.Add("onmouseout","this.className='btn_Bg1'");//鼠标离开样式
+					//((Button)cl).Attributes.Add("onmousedown","this.className='ButtonDown'");//鼠标按下样式
+					//((Button)cl).Attributes.Add("onmouseup","this.className='Buttonup'");//鼠标抬起样式
+				}
+					
+				if (cl.ToString()=="System.Web.UI.HtmlControls.HtmlInputButton")     
+				{
+					//必须将客户端空件必须作为服务器端控件运行
+					((HtmlInputButton)cl).Attributes["class"]="ButtonDefault";//默认样式
+					((HtmlInputButton)cl).Attributes.Add ("onmouseover","setoverbutton('"+cl.ID+"','"+cl.Parent.ID +"')");//鼠标悬浮样式
+					((HtmlInputButton)cl).Attributes.Add ("onmouseout","setoutbutton('"+cl.ID+"')");//鼠标离开样式
+					//((HtmlInputButton)cl).Attributes.Add("onmousedown","setonmousedown('"+cl.ID +"')");//鼠标按下样式
+					//((HtmlInputButton)cl).Attributes.Add("onmouseup","setonmouseup('"+cl.ID+"')");//鼠标抬起样式
+				}
+				if(cl.ToString()=="System.Web.UI.WebControls.DataGrid")
+				{
+					DataGrid ug = ((DataGrid)cl);
+					ug.Width = Unit.Percentage(95);
+					ug.HorizontalAlign = HorizontalAlign.Center;
+					ug.HeaderStyle.BackColor = Color.Transparent;
+					ug.HeaderStyle.CssClass = "td_bgtextblue";
+					//ug.DisplayLayout.CellClickActionDefault = CellClickAction.Edit;		//当点击单元格时选择当前行
+					ug.SelectedItemStyle.BackColor = Color.WhiteSmoke;
+					//ug.DisplayLayout.SelectTypeRowDefault = SelectType.Extended;			//允许多行选择
+					ug.BorderColor = Color.FromArgb(102,153,204);
+					//ug.DisplayLayout.AllowUpdateDefault = AllowUpdate.Yes;
+					ug.ItemStyle.Height = Unit.Pixel(25);
+					ug.ItemStyle.CssClass = "text_white";
+					
+					
+				}
+				if(cl.ToString()=="Infragistics.WebUI.UltraWebGrid.UltraWebGrid")
+				{
+					UltraWebGrid ug = ((UltraWebGrid)cl);
+					ug.Width = Unit.Percentage(100);
+					ug.HorizontalAlign = HorizontalAlign.Center;
+					ug.DisplayLayout.HeaderStyleDefault.BackColor = Color.Transparent;
+					ug.DisplayLayout.HeaderStyleDefault.CssClass = "td_bgtextblue";
+					ug.DisplayLayout.CellClickActionDefault = CellClickAction.CellSelect;		//当点击单元格时选择当前行
+					ug.DisplayLayout.SelectedRowStyleDefault.BackColor = Color.WhiteSmoke;
+					ug.DisplayLayout.SelectTypeRowDefault = SelectType.Extended;			//允许多行选择
+					ug.DisplayLayout.RowStyleDefault.BorderColor = Color.FromArgb(102,153,204);
+					//ug.DisplayLayout.AllowUpdateDefault = AllowUpdate.Yes;
+//					ug.DisplayLayout.RowHeightDefault = Unit.Pixel(22);
+					ug.DisplayLayout.HeaderStyleDefault.Height=Unit.Pixel(22);
+					
+					ug.DisplayLayout.RowStyleDefault.CssClass = "text_white";
+					ug.DisplayLayout.AllowColSizingDefault=AllowSizing.Free;//改变列宽
+
+					ug.DisplayLayout.StationaryMargins=StationaryMargins.HeaderAndFooter;//固定表头行
+					
+					
+				}
+				//递归
+				if(cl.HasControls())
+				{
+					eachctl(cl.Controls);
+ 							
+				}
+			}
+		}
+		public void winOpen(string url,Page page)
+		{
+			page.RegisterStartupScript("open","<script>var win=window.open('"+url+"','','toolbar=no,resizable=yes,scrollbars=yes');win.focus();</script>");
+		
+		}
+		#region Web Form Designer generated code
+		override protected void OnInit(EventArgs e)
+		{
+			//
+			// CODEGEN：该调用是 ASP.NET Web 窗体设计器所必需的。
+			//
+			InitializeComponent();
+			base.OnInit(e);
+		}
+		
+		/// <summary>
+		/// 设计器支持所需的方法 - 不要使用代码编辑器修改
+		/// 此方法的内容。
+		/// </summary>
+		private void InitializeComponent()
+		{    
+			this.Load += new System.EventHandler(this.Page_Load);
+		}
+		#endregion
+		//
+		public void Alert(string str_Message,Page page)
+		{
+			page.RegisterStartupScript("","<script>alert('"+str_Message+"');</script>");
+		}
+		
+		
+	}
+}

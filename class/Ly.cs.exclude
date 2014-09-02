@@ -1,0 +1,964 @@
+using System.Data;
+using System.Drawing;
+using System.Web;
+using System.Web.SessionState;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.HtmlControls;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+using System.IO;
+using System.Web.Mail;
+using System.Text;
+using System.Xml;
+using Infragistics.WebUI.UltraWebGrid;
+using Microsoft.Web.UI.WebControls;
+using WFNetCtrl;
+using System.Collections;
+
+namespace CRM
+{
+	/// <summary>
+	/// Ly 的摘要说明。
+	/// </summary>
+	public class Ly:DB
+	{
+		Page page  = new Page();
+		
+		public string [] FieldArray;
+		public string [] ContentArray;
+		public ArrayList FieldArrayList;
+		public ArrayList ContentArrayList;
+		public TextBox [] TBArray;
+		public DropDownList [] DDLArray;
+		public RadioButtonList [] RBLArray;
+		public CheckBoxList [] CBLArray;
+		public Label [] LblArray;
+		public Button [] BtnArray;
+		public WFNetCtrl.Calendar [] CldArray;
+		public WFNetCtrl.ComboBox [] CbbArray;
+		public int num;
+		public Ly()
+		{
+			//
+			// TODO: 在此处添加构造函数逻辑
+			//
+		}
+		
+		/// <summary>
+		/// 弹出提示框
+		/// </summary>
+		/// <param name="str"></param>
+		/// <param name="page"></param>
+		public void Alert(string str,Page page)
+		{
+			page.RegisterStartupScript("","<script language=\"javascript\">alert('"+str+"');</"+"script>"); 
+		}
+		public int aaa()
+		{
+			return ++num;
+		}
+		///<summary>
+		/// 弹出窗口
+		///</summary>
+		public void OpenNewPage(string Url,string height,string width,string left,string top,string ScrollBarsState,Page page)
+		{
+			string ScriptStr="<script language=\"javascript\">window.open('"+Url+"','NewPage','height="+height+",width="+width+",left="+left+",top="+top+",resizable=no,scrollbars="+ScrollBarsState+",status=no,toolbar=no,menubar=no,location=no');</"+"script>";
+			page.RegisterStartupScript("",ScriptStr);
+		}
+		public void OpenNewPage(string Url,string height,string width,string left,string top,string ScrollBarsState,string ResizableState,Page page)
+		{
+			string ScriptStr="<script language=\"javascript\">window.open('"+Url+"','NewPage','height="+height+",width="+width+",left="+left+",top="+top+",resizable="+ResizableState+",scrollbars="+ScrollBarsState+",status=no,toolbar=no,menubar=no,location=no');</"+"script>";
+			page.RegisterStartupScript("",ScriptStr);
+		}
+		public void OpenNewPage(string Url,string height,string width,string ScrollBarsState,Page page)
+		{
+			string surl;
+			if (Url.IndexOf("?") != -1)
+			{
+				surl = Url + "&dummy=";
+			}
+			else
+			{
+				surl = Url + "?dummy=";
+			}
+			string ScriptStr="<script language=\"javascript\">var rnd = Math.random();window.showModalDialog('"+surl+"'+rnd,  rnd,'dialogHeight: "+height+"px; dialogWidth: "+width+"px;center: Yes;resizable:no;status:no;scroll:"+ScrollBarsState+"; ');</"+"script>";
+				
+			page.RegisterStartupScript("",ScriptStr);
+		}
+		
+		/// <summary>
+		/// 从数据库中取得显示的图片(顶部是1，左1是2，左2是3，底部是4，中间是5)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>
+		public string ShowImage(string Id)
+		{
+//			string Ly_Sql="select * from LY_SYS_IMAGE where F_ID='"+Id+"'";
+//			DataTable Ly_Db=this.GetTable (Ly_Sql);
+//			string TheImage=Ly_Db.Rows[0]["F_IMAGE"].ToString ();
+//			Ly_Db.Clear ();
+//			return TheImage;
+			return "";
+		}
+
+		/// <summary>
+		/// 根据数组中的ID值，翻译成相关名称(ID值，表名，ID字段名，NAME字段名，条件)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public string PassIdArrayGetName(string ContentId,string TableName,string FieldId,string FieldName)
+		{
+			string ContentName="";
+			if(ContentId.Trim ()!="")
+			{
+				if(ContentId.Trim ().IndexOf(',')<0)
+				{
+					ContentId+=",";
+				}
+				string [] IdArray=ContentId.Trim ().Split (',');
+				for(int i=0;i<IdArray.Length -1;i++)
+				{
+					string Ly_Sql="select "+FieldName+" from "+TableName+" where "+FieldId+" = '"+IdArray[i].Trim ()+"'";
+					DataTable Ly_Db=this.GetTable (Ly_Sql);
+					if(Ly_Db.Rows.Count >0)
+					{
+						ContentName+=Ly_Db.Rows[0][0].ToString ()+",";
+					}
+					Ly_Db.Clear ();
+				}
+				if(ContentName.Trim ()!="")
+				{
+					ContentName=ContentName.Remove (ContentName.Length -1,1);
+				}
+			}
+			return ContentName;
+		}
+		/// <summary>
+		/// 全选Repeater中的CheckBox(Repeater名称，Repeater包含的CheckBox名称，全选的CheckBox名称)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public void CheckAllCheckBox(Repeater Rpt,string CheckBoxName,CheckBox CbAll)
+		{
+			for(int i=0;i<Rpt.Items.Count ;i++)
+			{
+				CheckBox Cb;
+				Cb=(CheckBox)Rpt.Items[i].FindControl (CheckBoxName);
+				if(CbAll.Checked ==true)
+				{
+					Cb.Checked =true;
+				}
+				else
+				{
+					Cb.Checked =false;
+				}
+			}
+		}
+		/// <summary>
+		/// 全选Repeater中的CheckBoxList(Repeater名称，Repeater包含的CheckBoxList名称，全选的CheckBox名称)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public void CheckAllCheckBoxList(Repeater Rpt,string CheckBoxListName,CheckBox CbAll)
+		{
+			for(int i=0;i<Rpt.Items.Count;i++)
+			{
+				CheckBoxList Cbl;
+				Cbl=(CheckBoxList)Rpt.Items[i].FindControl (CheckBoxListName);
+				
+				for(int j=0;j<Cbl.Items.Count ;j++)
+				{
+					if(CbAll.Checked ==true)
+					{
+						Cbl.Items[j].Selected =true;
+					}
+					else
+					{
+						Cbl.Items[j].Selected =false;
+					}
+				}
+			}
+		}
+		/// <summary>
+		/// 全选CheckBoxList(CheckBoxList名称，全选的CheckBox名称)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public void CheckAllCheckBoxList(CheckBoxList Cbl,CheckBox CbAll)
+		{
+			for(int j=0;j<Cbl.Items.Count ;j++)
+			{
+				if(CbAll.Checked ==true)
+				{
+					Cbl.Items[j].Selected =true;
+				}
+				else
+				{
+					Cbl.Items[j].Selected =false;
+				}
+			}
+		}
+		/// <summary>
+		/// 得到Checkboxlist的值
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public string GetCheckBoxListValue(CheckBoxList Cbl)
+		{
+			string Content="";
+			for(int j=0;j<Cbl.Items.Count ;j++)
+			{
+				if(Cbl.Items[j].Selected ==true)
+				{
+					Content+=Cbl.Items[j].Value+",";
+				}
+			}
+			return Content;
+		}
+		
+		/// <summary>
+		/// 返回当前记录的内容(Repeater名称，Repeater包含的CheckBox名称，Label名称)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public string ReturnContent(Repeater Rpt,string CheckBoxName,string LabelName)
+		{
+			int num=0;
+			for(int i=0;i<Rpt.Items.Count ;i++)
+			{
+				CheckBox Cb;
+				Cb=(CheckBox)Rpt.Items[i].FindControl (CheckBoxName);
+
+				Label Lbl;
+				Lbl=(Label)Rpt.Items[i].FindControl (LabelName);
+
+				if(Cb.Checked ==true)
+				{
+					num+=1;
+				}
+			}
+			if(num>1)
+			{
+				return "False";
+			}
+			
+			string Content="0";
+			for(int i=0;i<Rpt.Items.Count ;i++)
+			{
+				CheckBox Cb;
+				Cb=(CheckBox)Rpt.Items[i].FindControl (CheckBoxName);
+
+				Label Lbl;
+				Lbl=(Label)Rpt.Items[i].FindControl (LabelName);
+
+				if(Cb.Checked ==true)
+				{
+					Content=Lbl.Text.Trim ();
+				}
+			}
+			return Content;
+			
+		}
+		
+		/// <summary>
+		/// 删除Repeater中的记录(Repeater名称，Repeater包含的CheckBox名称，Label名称，表名，ID字段名,是否真实删除)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public void CheckDel(Repeater Rpt,string CheckBoxName,string LabelName,string TableName,string FieldId,string Flag)
+		{
+			for(int i=0;i<Rpt.Items.Count ;i++)
+			{
+				CheckBox Cb;
+				Cb=(CheckBox)Rpt.Items[i].FindControl (CheckBoxName);
+
+				Label Lbl;
+				Lbl=(Label)Rpt.Items[i].FindControl (LabelName);
+
+				if(Cb.Checked ==true)
+				{
+					string Ly_Sql="";
+					if(Flag=="Y")
+					{
+						Ly_Sql="delete from "+TableName+" where "+FieldId+"='"+Lbl.Text+"'";
+					}
+					else
+					{
+						Ly_Sql="update "+TableName+" set F_DEL='Y' where "+FieldId+"='"+Lbl.Text+"'";
+					}
+					this.RunSql (Ly_Sql);
+				}
+			}
+			this.Alert ("删除成功！",page);
+		}
+		/// <summary>
+		/// 显示Repeater中的CheckBoxList(Repeater名称，Repeater包含的CheckBoxList名称，Label名称，表名，ID字段名，NAME字段名，条件字段名，排序字段名)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>	
+		public void BindRepeaterCheckBoxList(Repeater Rpt,string CheckBoxListName,string LabelName,
+			                                 string TableName,string FieldId,string FieldName,string FieldCondition,
+			                                 string FieldOrder)
+		{
+			for(int i=0;i<Rpt.Items.Count;i++)
+			{
+				CheckBoxList Cbl;
+				Cbl=(CheckBoxList)Rpt.Items[i].FindControl (CheckBoxListName);
+
+				Label Lbl;
+				Lbl=(Label)Rpt.Items[i].FindControl(LabelName);
+
+				string Ly_Sql="select * from "+TableName+" where "+FieldCondition+" = '"+Lbl.Text+"' order by "+FieldOrder;
+				this.BindCheckBoxList(FieldId,FieldName,Ly_Sql,Cbl);
+			}
+		}
+		/// <summary>
+		/// 根据数据库中的值使得CheckBoxList被选中(Repeater名称，Repeater包含的CheckBoxList名称，内容)
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>		
+		public void BindRepeaterCheckBoxList(Repeater Rpt,string CheckBoxListName,string Content)
+		{
+			for(int i=0;i<Rpt.Items.Count;i++)
+			{
+				CheckBoxList Cbl;
+				Cbl=(CheckBoxList)Rpt.Items[i].FindControl (CheckBoxListName);
+
+				for(int j=0;j<Cbl.Items.Count ;j++)
+				{
+					if(Content.IndexOf(Cbl.Items[j].Value)>-1)
+					{
+						Cbl.Items[j].Selected =true;
+					}
+				}
+			}
+		}
+		/// <summary>
+		/// 得到Repeater中CBheckboxlist的值（Repeater名称，Checkboxlist的名称）
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>		
+		public string GetRepeaterCheckBoxListValue(Repeater Rpt,string CheckBoxListName)
+		{
+			string Content="";
+			for(int i=0;i<Rpt.Items.Count;i++)
+			{
+				CheckBoxList Cbl;
+				Cbl=(CheckBoxList)Rpt.Items[i].FindControl (CheckBoxListName);
+
+				for(int j=0;j<Cbl.Items.Count ;j++)
+				{
+					if(Cbl.Items[j].Selected ==true)
+					{
+						Content+=Cbl.Items[j].Value+",";
+					}
+				}
+			}
+			return Content;
+		}
+
+		/// <summary>
+		/// 增加记录（字段数组，内容数组，表名）
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>
+		public void OperateTable(string [] FieldName,string [] FieldContent,string TableName)
+		{
+			string Ly_Sql="";
+			string Field="";
+			string Content="";
+
+			for(int i=0;i<FieldName.Length ;i++)
+			{
+				Field+=FieldName[i]+",";
+//				string aa=FieldContent[i].Replace("'","`");
+				Content+="'"+FieldContent[i].Replace("'","`")+"',";
+			}
+			Field =Field.Remove (Field.Length -1,1);
+			Content =Content.Remove (Content.Length -1,1);
+
+			Ly_Sql ="insert into "+TableName+" ("+Field+") values ("+Content+")";
+			this.RunSql(Ly_Sql);
+		}
+		public void OperateTable(ArrayList FieldName,ArrayList FieldContent,string TableName)
+		{
+			string Ly_Sql="";
+			string Field="";
+			string Content="";
+
+			for(int i=0;i<FieldName.Count ;i++)
+			{
+				Field+=FieldName[i].ToString ()+",";
+				Content+="'"+FieldContent[i].ToString ().Replace("'","`")+"',";
+			}
+			Field =Field.Remove (Field.Length -1,1);
+			Content =Content.Remove (Content.Length -1,1);
+
+			Ly_Sql ="insert into "+TableName+" ("+Field+") values ("+Content+")";
+			this.RunSql(Ly_Sql);
+		}
+
+		/// <summary>
+		/// 组合ArrayList（文本框数组，下拉框数组，单选框数组，复选框数组，Lable数组，其他字段，其他内容）
+		/// </summary>
+		public void CreateArrayList(TextBox [] Tb,DropDownList [] Ddl, RadioButtonList [] Rbl, CheckBoxList [] Cbl,WFNetCtrl.Calendar [] Cld,string [] OtherField,string [] OtherContent)
+		{
+		
+			ArrayList Field =new ArrayList();
+			ArrayList Content =new ArrayList();
+			
+			#region 控件
+			if(Cld!=null)
+			{
+				for(int i=0;i<Cld.Length ;i++)
+				{
+					Field.Add(Cld[i].ID);
+					Content.Add(Cld[i].Text.Trim ());
+				}
+			}
+			if(Tb!=null)
+			{
+				for(int i=0;i<Tb.Length ;i++)
+				{
+					Field.Add(Tb[i].ID);
+					Content.Add(Tb[i].Text.Trim ());
+				}
+			}
+			if(Ddl!=null)
+			{
+				for(int i=0;i<Ddl.Length ;i++)
+				{
+					if(Ddl[i].SelectedIndex!=-1)
+					{
+						Field.Add(Ddl[i].ID);
+						Content.Add(Ddl[i].SelectedItem.Value);
+					}
+				}
+			}
+			if(Rbl!=null)
+			{
+				for(int i=0;i<Rbl.Length ;i++)
+				{
+					if(Rbl[i].SelectedIndex!=-1)
+					{
+						Field.Add(Rbl[i].ID);
+						Content.Add(Rbl[i].SelectedItem.Value);
+					}
+				}
+			}
+			if(Cbl!=null)
+			{
+				for(int i=0;i<Cbl.Length ;i++)
+				{
+					string c="";
+					c=this.GetCheckBoxListValue(Cbl[i]);
+					if(c!="")
+					{
+						Field.Add(Cbl[i].ID);
+						Content.Add(c);
+					}
+				}
+			}
+			#endregion
+
+			#region 其他字段
+			if(OtherField!=null)
+			{
+				for(int i=0;i<OtherField.Length ;i++)
+				{
+					Field.Add(OtherField[i]);
+					Content.Add (OtherContent[i]);
+				}
+			}
+			#endregion
+
+			this.FieldArrayList=null;
+			this.ContentArrayList=null;
+			this.FieldArrayList=Field;
+			this.ContentArrayList=Content;
+		}
+		/// <summary>
+		/// 清空控件内容（文本框数组，下拉框数组，单选框数组，复选框数组，Lable数组）
+		/// </summary>
+		public void ClearContral(TextBox [] Tb,DropDownList [] Ddl, RadioButtonList [] Rbl, CheckBoxList [] Cbl,WFNetCtrl.Calendar [] Cld)
+		{
+			if(Tb!=null)
+			{
+				for(int i=0;i<Tb.Length ;i++)
+				{
+					Tb[i].Text ="";
+				}
+			}
+			if(Ddl!=null)
+			{
+				for(int i=0;i<Ddl.Length ;i++)
+				{
+					Ddl[i].SelectedIndex=-1;
+				}
+			}
+			if(Rbl!=null)
+			{
+				for(int i=0;i<Rbl.Length ;i++)
+				{
+					Rbl[i].SelectedIndex=-1;
+				}
+			}
+			if(Cbl!=null)
+			{
+				for(int i=0;i<Cbl.Length ;i++)
+				{
+					Cbl[i].SelectedIndex=-1;
+				}
+			}
+			if(Cld!=null)
+			{
+				for(int i=0;i<Cld.Length ;i++)
+				{
+					Cld[i].Text ="";
+				}
+			}
+			
+		}
+		/// <summary>
+		/// 修改记录（字段数组，内容数组，表名，条件字段，条件字段的内容）
+		/// </summary> 
+		/// <param name="str"></param>
+		/// <param name="page"></param>
+		public void OperateTable(string [] FieldName,string [] FieldContent,string TableName,string FieldCondition,string FieldConditionContent)
+		{
+			string Ly_Sql="";
+			string Content="";
+
+			for(int i=0;i<FieldName.Length ;i++)
+			{
+				Content+=FieldName[i]+" = "+"'"+FieldContent[i].Replace("'","`")+"',";
+			}
+			Content =Content.Remove (Content.Length -1,1);
+			Ly_Sql ="update "+TableName+" set "+Content+" where "+FieldCondition+" = '"+FieldConditionContent+"'";
+			this.RunSql(Ly_Sql);
+		}
+		public void OperateTable(ArrayList FieldName,ArrayList FieldContent,string TableName,string FieldCondition,string FieldConditionContent)
+		{
+			string Ly_Sql="";
+			string Content="";
+
+			for(int i=0;i<FieldName.Count ;i++)
+			{
+				Content+=FieldName[i].ToString ()+" = "+"'"+FieldContent[i].ToString ().Replace("'","`")+"',";
+			}
+			Content =Content.Remove (Content.Length -1,1);
+			Ly_Sql ="update "+TableName+" set "+Content+" where "+FieldCondition+" = '"+FieldConditionContent+"'";
+			this.RunSql(Ly_Sql);
+		}
+		/// <summary>
+		/// 显示记录（文本框数组，下拉框数组，单选框数组，复选框数组，Lable数组）
+		/// </summary> 
+		public void ShowTableContent(TextBox [] Tb,DropDownList [] Ddl, RadioButtonList [] Rbl, CheckBoxList [] Cbl,WFNetCtrl.Calendar [] Cld,string TableName,string FieldIdContent)
+		{
+			//TabIndex==0 普通
+			//TabIndex==1 必填
+			//TabIndex==2 日期
+			//TabIndex==3 数字
+
+			string Ly_Sql="";
+			Ly_Sql="select * from "+TableName+" where F_ID= '"+FieldIdContent+"'";
+			DataTable Ly_Dt=this.GetTable (Ly_Sql);
+			if(Ly_Dt.Rows.Count>0)
+			{
+				if(Cld!=null)
+				{
+					for(int i=0;i<Cld.Length ;i++)
+					{
+						Cld[i].Text =System.DateTime.Parse (Ly_Dt.Rows[0][Cld[i].ID].ToString ()).ToShortDateString();
+					}	
+				}
+				if(Tb!=null)
+				{
+					for(int i=0;i<Tb.Length ;i++)
+					{
+						Tb[i].Text =Ly_Dt.Rows[0][Tb[i].ID].ToString ();
+					
+						//显示时间
+						if(Tb[i].TabIndex.ToString() =="2")
+						{
+							Tb[i].Text =System.DateTime.Parse (Tb[i].Text).ToShortDateString();
+						}
+					}	
+				}
+				if(Ddl!=null)
+				{
+					for(int i=0;i<Ddl.Length ;i++)
+					{
+						Ddl[i].SelectedIndex=-1;
+						this.ly_bind_ddl(Ddl[i],Ly_Dt.Rows[0][Ddl[i].ID].ToString ().Trim ());
+					}
+				}
+				if(Rbl!=null)
+				{
+					for(int i=0;i<Rbl.Length ;i++)
+					{
+						Rbl[i].SelectedIndex=-1;
+						this.ly_bind_rbl(Rbl[i],Ly_Dt.Rows[0][Rbl[i].ID].ToString ());
+					}
+				}
+				if(Cbl!=null)
+				{
+					for(int i=0;i<Cbl.Length ;i++)
+					{
+						Cbl[i].SelectedIndex=-1;
+						if(Cbl[i].ID=="F_PrincipalNum")
+						{
+							this.ly_bind_cbl(Cbl[i],Ly_Dt.Rows[0][Cbl[i].ID].ToString (),",");
+						}
+						else
+						{
+							this.ly_bind_cbl(Cbl[i],Ly_Dt.Rows[0][Cbl[i].ID].ToString ());
+						}
+					}
+				}
+			}
+			Ly_Dt.Clear ();
+		}
+		public void ShowTableContent(TextBox [] Tb,DropDownList [] Ddl, RadioButtonList [] Rbl, CheckBoxList [] Cbl,WFNetCtrl.Calendar [] Cld,WFNetCtrl.ComboBox [] Wcb,string TableName,string FieldIdContent)
+		{
+			//TabIndex==0 普通
+			//TabIndex==1 必填
+			//TabIndex==2 日期
+			//TabIndex==3 数字
+
+			string Ly_Sql="";
+			Ly_Sql="select * from "+TableName+" where F_ID= '"+FieldIdContent+"'";
+			DataTable Ly_Dt=this.GetTable (Ly_Sql);
+			if(Ly_Dt.Rows.Count>0)
+			{
+				if(Cld!=null)
+				{
+					for(int i=0;i<Cld.Length ;i++)
+					{
+						Cld[i].Text =System.DateTime.Parse (Ly_Dt.Rows[0][Cld[i].ID].ToString ()).ToShortDateString();
+					}	
+				}
+				if(Tb!=null)
+				{
+					for(int i=0;i<Tb.Length ;i++)
+					{
+						Tb[i].Text =Ly_Dt.Rows[0][Tb[i].ID].ToString ();
+					
+						//显示时间
+						if(Tb[i].TabIndex.ToString() =="2")
+						{
+							Tb[i].Text =System.DateTime.Parse (Tb[i].Text).ToShortDateString();
+						}
+					}	
+				}
+				if(Ddl!=null)
+				{
+					for(int i=0;i<Ddl.Length ;i++)
+					{
+						Ddl[i].SelectedIndex=-1;
+						this.ly_bind_ddl(Ddl[i],Ly_Dt.Rows[0][Ddl[i].ID].ToString ().Trim ());
+					}
+				}
+				if(Rbl!=null)
+				{
+					for(int i=0;i<Rbl.Length ;i++)
+					{
+						Rbl[i].SelectedIndex=-1;
+						this.ly_bind_rbl(Rbl[i],Ly_Dt.Rows[0][Rbl[i].ID].ToString ());
+					}
+				}
+				if(Cbl!=null)
+				{
+					for(int i=0;i<Cbl.Length ;i++)
+					{
+						Cbl[i].SelectedIndex=-1;
+						this.ly_bind_cbl(Cbl[i],Ly_Dt.Rows[0][Cbl[i].ID].ToString ());
+					}
+				}
+				if(Wcb!=null)
+				{
+					for(int i=0;i<Wcb.Length ;i++)
+					{
+						Wcb[i].SelectedIndex=-1;
+						this.ly_bind_wcb(Wcb[i],Ly_Dt.Rows[0][Wcb[i].ID].ToString ());
+					}
+				}
+			}
+			Ly_Dt.Clear ();
+		}
+		public void ly_bind_rbl(RadioButtonList rbl,string content)
+		{
+			for(int i=0;i<rbl.Items.Count ;i++)
+			{
+				if(rbl.Items[i].Value ==content)
+				{
+					rbl.Items[i].Selected =true;
+					break;
+				}
+			}
+		}
+		public void ly_bind_ddl(DropDownList ddl,string content)
+		{
+			for(int i=0;i<ddl.Items.Count ;i++)
+			{
+				if(ddl.Items[i].Value.Trim () ==content.Trim ())
+				{
+					ddl.Items[i].Selected =true;
+					break;
+				}
+			}
+		}
+		public void ly_bind_cbl(CheckBoxList cbl,string content)
+		{
+			for(int i=0;i<cbl.Items.Count ;i++)
+			{
+				if(content.IndexOf(cbl.Items[i].Value)>-1)
+				{
+					cbl.Items[i].Selected =true;
+				}
+			   
+			}
+		}
+		public void ly_bind_cbl(CheckBoxList cbl,string content,string Flag)
+		{
+			string [] PeoArray=content.Split (',');
+			for(int x=0;x<PeoArray.Length -1;x++)
+			{
+				for(int i=0;i<cbl.Items.Count ;i++)
+				{
+					if(PeoArray[x].Trim ()==cbl.Items[i].Value.Trim ())
+					{
+						cbl.Items[i].Selected =true;
+						break;
+					}
+				}
+			}
+			
+		}
+		public void ly_bind_wcb(WFNetCtrl.ComboBox wcb,string content)
+		{
+			for(int i=0;i<wcb.Items.Count ;i++)
+			{
+				if(wcb.Items[i].Value.Trim () ==content.Trim ())
+				{
+					wcb.Items[i].Selected =true;
+					wcb.Text=wcb.SelectedItem.Text;
+					break;
+				}
+			}
+		}
+		public string ReturnSelectCondition(TextBox [] Tb,WFNetCtrl.Calendar [] Cld,string DateField)
+		{
+			string Content="";
+			if(Tb!=null)
+			{
+				for(int i=0;i<Tb.Length ;i++)
+				{
+					if(Tb[i].Text.Trim ()!="")
+					{
+						Content+=" and "+Tb[i].ID+" like '%"+Tb[i].Text.Trim ()+"%' ";
+					}
+				}
+			}
+			if(Cld!=null)
+			{
+				for(int i=0;i<Cld.Length ;i++)
+				{
+					if(Cld[0].Text.Trim ()!="")
+					{
+						Content+=" and "+DateField+">="+"'"+Cld[0].Text.Trim ()+"'";
+					}
+					if(Cld[1].Text.Trim ()!="")
+					{
+						Content+=" and "+DateField+"<="+"'"+Cld[1].Text.Trim ()+"'";
+					}
+				}
+			}
+			return Content;
+		}
+		public string ReturnSelectCondition(TextBox [] Tb,WFNetCtrl.Calendar [] Cld,RadioButtonList Rbl, string DateField,string PeoField,string UserId)
+		{
+			string Content="";
+			
+			//有权限的人员
+			Content=" and "+this.ReturnCompanyUnderlingUserCondition(UserId,PeoField);
+
+			if(Tb!=null)
+			{
+				for(int i=0;i<Tb.Length ;i++)
+				{
+					if(Tb[i].Text.Trim ()!="")
+					{
+						Content+=" and "+Tb[i].ID+" like '%"+Tb[i].Text.Trim ()+"%' ";
+					}
+				}
+			}
+			if(Cld!=null)
+			{
+				for(int i=0;i<Cld.Length ;i++)
+				{
+					if(Cld[0].Text.Trim ()!="")
+					{
+						Content+=" and "+DateField+">="+"'"+Cld[0].Text.Trim ()+"'";
+					}
+					if(Cld[1].Text.Trim ()!="")
+					{
+						Content+=" and "+DateField+"<="+"'"+Cld[1].Text.Trim ()+"'";
+					}
+				}
+			}
+			if(Rbl!=null)
+			{
+				for(int i=0;i<Rbl.Items.Count ;i++)
+				{
+					if(Rbl.Items[i].Selected ==true)
+					{
+						Content+=" order by "+Rbl.Items[i].Value+" desc";
+					}
+				}
+			}
+			return Content;
+		}
+		public string ReturnCompanyUnderlingUserNum(string UserId)
+		{
+			this.GetRow("select F_DOWNPEO from LY_SYS_USER where F_USER_ID='"+UserId+"'");
+			string DownPeo=this._dr[0].ToString ();
+			this.Close();
+			
+			string Content="(";
+			Content+="'"+UserId+"',";
+			if(DownPeo!="")
+			{
+//				DownPeo+=",";
+				string [] PeoArray=DownPeo.Split (',');
+				for(int i=0;i<PeoArray.Length -1;i++)
+				{
+					Content+="'"+PeoArray[i]+"',";
+				}
+			}
+			Content=Content.Remove(Content.Length -1,1);
+			Content+=")";
+			return Content;
+		}
+		public string ReturnCompanyUnderlingUserCondition(string UserId,string Field)
+		{
+			this.GetRow("select F_DOWNPEO from LY_SYS_USER where F_USER_ID='"+UserId+"'");
+			string DownPeo=this._dr[0].ToString ();
+			this.Close();
+			
+			string Content="(";
+			Content+=Field+" like '%"+UserId+"%' or ";
+			if(DownPeo!="")
+			{
+				string [] PeoArray=DownPeo.Split (',');
+				for(int i=0;i<PeoArray.Length -1;i++)
+				{
+//					Content+="'"+PeoArray[i]+"',";
+					Content+=Field+" like '%"+PeoArray[i]+"%' or ";
+				}
+			}
+			Content=Content.Substring(0,Content.Length -3);
+			Content+=")";
+			return Content;
+		}
+		public void PassLabelShowTableDetail(Label [] Lb,string TableName,string FieldName,string FieldContent)
+		{
+			string Ly_Sql="select * from "+TableName+" where "+FieldName+" ='"+FieldContent+"'";
+			DataTable Ly_Dt=this.GetTable (Ly_Sql);
+			for(int i=0;i<Lb.Length ;i++)
+			{
+				Lb[i].Text =Ly_Dt.Rows[0][Lb[i].ID].ToString ();
+				if(Lb[i].TabIndex.ToString ()=="2")
+				{
+					Lb[i].Text =System.DateTime.Parse (Lb[i].Text).ToShortDateString ();
+				}
+
+			}
+			Ly_Dt.Clear ();
+		}
+		public string ReturnClientIdHttp(string TheClientId)
+		{
+			string Url="";
+			Url ="<a href=ClientVisitTel_Add.aspx?ClientId="+TheClientId+" class=m2>[拜访/电话]</a>&nbsp;&nbsp;";
+			Url+="<a href=ClientComplaint_Add.aspx?ClientId="+TheClientId+" class=m2>[投诉]</a>&nbsp;&nbsp;";
+			Url+="<a href=ClientSatisfaction_Add.aspx?ClientId="+TheClientId+" class=m2>[满意度]</a>&nbsp;&nbsp;";
+			Url+="<a href=ClientFeedBack_Add.aspx?ClientId="+TheClientId+" class=m2>[需求反馈]</a>";
+			return Url;
+		}
+		public void UpdateClientCode(string MainId,string OldClientId,string NewClientCode)
+		{
+			string Ly_Sql="";
+			
+			Ly_Sql="update LY_AskPrice set 订舱人代码='"+NewClientCode+"' where 订舱人代码='"+OldClientId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientAwake set F_ClientCode='"+NewClientCode+"' where F_MAIN_ID='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientComplaint set F_ClientCode='"+NewClientCode+"' where F_ClientId='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+			
+			Ly_Sql="update LY_ClientConnection set F_ClientCode='"+NewClientCode+"' where F_MAIN_ID='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientFeedBack set F_ClientCode='"+NewClientCode+"' where F_ClientId='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientLinkMan set F_ClientCode='"+NewClientCode+"' where F_MAIN_ID='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientSatisfaction set F_ClientCode='"+NewClientCode+"' where F_ClientId='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+			Ly_Sql="update LY_ClientVisitTel set F_ClientCode='"+NewClientCode+"' where F_ClientId='"+MainId+"'";
+			this.RunSql(Ly_Sql);
+
+		}
+		/// <summary>
+		/// 导入数据（原字段数组，现字段数组，DataTable,类别：Peo或Client）
+		/// </summary>
+		/// <param name="OldField"></param>
+		/// <param name="NewField"></param>
+		/// <param name="Ly_Dt"></param>
+		/// <param name="Type"></param>
+		public void ImoprtData(string [] OldField,string [] NewField,DataTable Ly_Dt,string Type)
+		{
+			string Ly_Sql="";
+			//导入人员表
+			if(Type=="Peo")
+			{
+				for(int i=0;i<Ly_Dt.Rows.Count ;i++)
+				{
+					Ly_Sql="insert into LY_SYS_USER (F_ImportFlag,";
+					for(int j=0;j<NewField.Length ;j++)
+					{
+						Ly_Sql+=NewField[j]+",";
+					}
+					Ly_Sql=Ly_Sql.Remove (Ly_Sql.Length -1,1)+") values ('Y',";
+					for(int j=0;j<OldField.Length ;j++)
+					{
+						if(Ly_Dt.Rows[i][j].ToString ().Trim ()=="")
+						{
+							Ly_Sql+="null,";
+						}
+						else
+						{
+							Ly_Sql+="'"+Ly_Dt.Rows[i][OldField[j]].ToString ().Trim ()+"',";
+						}
+						
+					}
+					Ly_Sql=Ly_Sql.Remove (Ly_Sql.Length -1,1)+")";
+					this.RunSql(Ly_Sql);
+				}
+				Ly_Dt.Clear ();
+			}
+			//导入客户表和联系人表
+			if(Type=="Client")
+			{
+				
+			}
+		}
+		
+	}
+}

@@ -1,0 +1,1523 @@
+using System;
+using System.Collections;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Web;
+using System.Web.SessionState;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.HtmlControls;
+using System.Data.SqlClient;
+using System.Text.RegularExpressions;
+using System.IO;
+//using System.Web.Mail;
+using System.Text;
+using System.Xml;
+using Infragistics.WebUI.UltraWebGrid;
+using Microsoft.Web.UI.WebControls;
+using WFNetCtrl;
+using System.Net;
+using System.Web.Util;
+using System.Web.Mail ;
+using jmail;
+
+namespace CRM
+{
+	/// <summary>
+	/// config 的摘要说明。
+	/// </summary>
+	public class config:DB
+	{
+		Page page  = new Page();
+		
+		public string UserId;//用户名
+		public string UserName;//姓名
+		public string UserPower;//权限
+		public string UserType;//人员类别
+		public string UserNum;//人员序列号(唯一标识)
+		public string EmailUserId;
+		public string EmailPwd;
+		public string Email;
+
+		public string user_name;//用户姓名
+		public string dep_name;//用户所属部门
+		public string user_role;//用户角色
+		public string dep_kind;//部门性质  
+		public string person_flag;//是否存在档案人员
+		public string dep_key;//部门键值  
+		public string dep_bel;//部门归属  
+
+		public config()
+		{
+			//
+			// TODO: 在此处添加构造函数逻辑
+			//
+		}
+		
+		/// <summary>
+		/// 绑定选择对话框按钮
+		/// </summary>
+		/// <param name="pBtnCtrl">按钮名称</param>
+		/// <param name="pID">T_ConfigSeleValues数据表中指定的ID</param>
+		/// <param name="pCtrlNameForGetValue">接收返回值的控件名称</param>
+		public void Add_SeleValue(ImageButton pBtnCtrl,string pID,string pCtrlNameForGetValue)
+		{
+			pBtnCtrl.Attributes.Add("onclick","document.getElementById('" + pCtrlNameForGetValue + "').value=window.showModalDialog('../../CommonCtrl/SeleValues.aspx?id=" + pID + "').replace(\"undefined\",\"\");return false;");
+		}
+		/// <summary>
+		/// 重载 绑定选择对话框按钮 返回双值
+		/// </summary>
+		/// <param name="pBtnCtrl">按钮名称</param>
+		/// <param name="pID">T_ConfigSeleValues数据表中指定的ID</param>
+		/// <param name="pCtrlNameForGetName">接受返回值名称的控件名</param>
+		/// <param name="pCtrlNameForGetValue">接收返回值ID的控件名称</param>
+		/// <param name="IsPostBack">选择之后是否使本页PostBack</param>
+		public void Add_SeleValue(ImageButton pBtnCtrl,string pID,string pCtrlNameForGetName,string pCtrlNameForGetValue,bool IsPostBack)
+		{
+			//pBtnCtrl.Attributes.Add("onclick","document.getElementById('" + pCtrlNameForGetValue + "').value=window.showModalDialog('../CommonCtrl/SeleValues.aspx?id=" + pID + "').replace(\"undefined\",\"\").substring(0,);return false;");
+			string thePostBack="";
+			if(!IsPostBack)
+			{
+				//引用页面不PostBack
+				thePostBack="return false;";
+			}
+			pBtnCtrl.Attributes.Add("onclick","var theValue=window.showModalDialog('../../CommonCtrl/SeleValues.aspx?id=" + pID + "').replace('undefined','');document.getElementById('" + pCtrlNameForGetName + "').value=theValue.substring(0,theValue.indexOf('{.WxS.}')).replace(\"&nbsp;\",\"\");document.getElementById('" + pCtrlNameForGetValue + "').value=theValue.substring(theValue.indexOf('{.WxS.}')+7);" + thePostBack);
+		}
+		/// <summary>
+		/// 弹出提示框
+		/// </summary>
+		/// <param name="str"></param>
+		/// <param name="page"></param>
+		public void Alert(string str,Page page)
+		{
+			page.RegisterStartupScript("","<script language=\"javascript\">alert('"+str+"');</"+"script>"); 
+		}
+		
+		/// <summary>
+		/// 焦点定位
+		/// </summary>
+		/// <param name="ctrl"></param>
+		/// <param name="page"></param>
+		public void setFocus( System.Web.UI.Control ctrl,Page page)
+		{
+			string s = "<SCRIPT language='javascript'>document.getElementById('" + ctrl.ID + "').focus() </SCRIPT>";
+			page.RegisterStartupScript( "focus", s );
+		}
+		/// <summary>
+		/// 给按钮加入删除提示
+		/// </summary>
+		/// <param name="btn"></param>
+		public void Add_DelConfirm(Button btn)
+		{
+			btn.Attributes.Add("onclick","return confirm('您是否确认删除这些记录?');");
+		}
+		public void ly_bind_rbl(RadioButtonList rbl,string content)
+		{
+			for(int i=0;i<rbl.Items.Count ;i++)
+			{
+				if(rbl.Items[i].Value ==content)
+				{
+					rbl.Items[i].Selected =true;
+					break;
+				}
+			}
+		}
+		public void ly_bind_ddl(DropDownList ddl,string content)
+		{
+			for(int i=0;i<ddl.Items.Count ;i++)
+			{
+				if(ddl.Items[i].Value ==content)
+				{
+					ddl.Items[i].Selected =true;
+					break;
+				}
+			}
+		}
+		public void ly_bind_cbl(CheckBoxList cbl,string content)
+		{
+			for(int i=0;i<cbl.Items.Count ;i++)
+			{
+				if(content.IndexOf(cbl.Items[i].Value)>-1)
+				{
+					cbl.Items[i].Selected =true;
+				}
+			}
+		}
+		public void ly_bind_wcb(WFNetCtrl.ComboBox wcb,string content)
+		{
+			for(int i=0;i<wcb.Items.Count ;i++)
+			{
+				if(wcb.Items[i].Value ==content)
+				{
+					wcb.Items[i].Selected =true;
+					wcb.Text=wcb.SelectedItem.Text;
+					break;
+				}
+			}
+		}
+
+		//根据所存ID，取得其名
+		public string PassIdGetValue(string content,string id_field,string name_field,string tb)
+		{
+			string the_content="";
+			string sql="select * from "+tb+" where "+id_field+"='"+content+"'";
+			if(this.GetRowCount (sql)>0)
+			{
+				this.GetRow (sql);
+				the_content=this._dr[name_field].ToString ();
+				//conn2.Close ();
+				//this.Close();
+			}
+			return the_content;
+		}
+		public string PassIdGetValue(string content,string id_field,string name_field,string tb,string fuck)
+		{
+			string the_content=content;
+			string sql="select * from "+tb+" where "+id_field+"='"+content+"'";
+			if(this.GetRowCount (sql)>0)
+			{
+				this.GetRow (sql);
+				the_content=this._dr[name_field].ToString ();
+				//conn2.Close ();
+				//this.Close();
+			}
+			return the_content;
+		}
+		//生成序列号
+//		public string GetCcode()
+//		{
+//			// 获得14+。。。位的时间随机数
+//			return GetDateRandom(7);
+//		}	
+		public string GetCCode()
+		{
+			// 获得14+。。。位的时间随机数
+			//return GetDateRandom(6);
+			return System.Guid.NewGuid().ToString();
+		}
+		/// <summary>
+		/// 获得int_Count随机数
+		/// </summary>
+		/// <param name="int_Count">位数</param>
+		/// <returns></returns>
+		public string GetRandom(int int_Count)
+		{
+			string str_RV="1";
+			for (int i=0;i<int_Count-2;i++)
+			{
+				str_RV=str_RV+"0";
+			}
+			Random r=new Random();
+			str_RV=r.Next(int.Parse(str_RV)).ToString();
+			int int_Count1=int_Count-str_RV.Length;
+			if (int_Count1>0)
+			{
+				for (int i=0;i<int_Count1;i++)
+				{
+//					str_RV=str_RV+"0";
+				}
+			}
+			return str_RV;
+		}
+		/// <summary>
+		/// 获得一个14+int_Count位时间随机数
+		/// </summary>
+		/// <returns></returns>
+		public string GetDateRandom(int int_Count)
+		{
+			string strData=DateTime.Now.ToString("yyyyMMddhhmmss");
+			strData=strData.Replace(":","");
+			strData=strData.Replace("-","");
+			strData=strData.Replace(" ","");
+			strData=strData+GetRandom(int_Count);
+			return strData;
+		}
+		/// <summary>
+		/// 读取Cookies信息
+		/// </summary>
+		/// <param name="page"></param>
+		/// <returns></returns>
+		public void GetCookies_Operator(Page page)
+		{   
+
+			HttpCookie op=page.Request.Cookies["Operator"];
+			if (op !=null)
+			{
+				UserId=op.Values["UserId"].ToString ();
+				UserName=op.Values["UserName"].ToString ();
+				UserPower=op.Values["UserPower"].ToString ();
+				UserType=op.Values["UserType"].ToString ();
+				UserNum=op.Values["UserNum"].ToString ();
+				EmailUserId=op.Values["EmailUserId"].ToString ();
+				EmailPwd=op.Values["EmailPwd"].ToString ();
+				Email=op.Values["Email"].ToString ();
+			}   
+			else
+			{
+				UserId=null;
+				UserName=null;
+				UserPower=null;
+				UserType=null;
+				UserNum=null;
+				EmailUserId=null;
+				EmailPwd=null;
+				Email=null;
+			}
+		}
+		public class MoneyString
+		{
+
+			private static readonly String   cnNumber      = "零壹贰叁肆伍陆柒捌玖";
+			private static readonly String   cnUnit        = "分角元拾佰仟万拾佰仟亿拾佰仟兆拾佰仟";
+
+
+			// 以下是货币金额中文大写转换方法
+			public static String GetCnString(String MoneyString)
+			{
+				String [] tmpString  = MoneyString.Split('.');
+				String    intString  = MoneyString;   // 默认为整数
+				String    decString  = "";            // 保存小数部分字串
+				String    rmbCapital = "";            // 保存中文大写字串
+				int       k;
+				int       j;
+				int       n;
+
+				if (tmpString.Length>1)
+				{
+					intString = tmpString[0];             // 取整数部分
+					decString = tmpString[1];             // 取小数部分
+				}
+				decString += "00";
+				decString  = decString.Substring (0,2);   // 保留两位小数位
+				intString += decString;
+
+				try
+				{
+					k = intString.Length -1;
+					if (k>0 && k<18)
+					{
+						for (int i=0;i<=k;i++)
+						{
+							j=(int)intString[i]-48;
+							// rmbCapital = rmbCapital + cnNumber[j] + cnUnit[k-i];     // 供调试用的直接转换
+							n = i+1 >= k ? (int)intString[k]-48:(int)intString[i+1]-48; // 等效于 if( ){ }else{ }
+							if (j==0)
+							{
+								if(k-i==2 || k-i==6 || k-i==10 || k-i==14)
+								{
+									rmbCapital += cnUnit[k-i];
+								}
+								else
+								{
+									if (n != 0)
+									{
+										rmbCapital  += cnNumber[j];
+									}
+								}
+							}
+							else
+							{
+								rmbCapital = rmbCapital + cnNumber[j] + cnUnit[k-i];
+							}
+						}
+
+						rmbCapital = rmbCapital.Replace ("兆亿万","兆");
+						rmbCapital = rmbCapital.Replace ("兆亿","兆");
+						rmbCapital = rmbCapital.Replace ("亿万","亿");
+						rmbCapital = rmbCapital.TrimStart('元');
+						rmbCapital = rmbCapital.TrimStart('零');
+						if(rmbCapital.LastIndexOf("分")==-1)
+						{
+							rmbCapital = rmbCapital+"整"; 
+						}
+						else
+						{
+							rmbCapital = rmbCapital;
+						}
+						return rmbCapital; 
+					}
+					else
+					{
+						return "";   // 超出转换范围时，返回零长字串
+					}
+				}
+				catch
+				{
+					return "";   // 含有非数值字符时，返回零长字串
+				}
+			}
+
+		}
+
+		/// <summary>
+		/// 定义文件流程
+		/// </summary>
+		/// <param name="file_type">文件类型：技改项目申请，资产大修申请，资产报废申请,技改项目验收,无偿调入验收,捐赠验收,新增固定资产明细,资产变动,固定资产明细修改日志,资产代管，代管资产明细</param>
+		/// <param name="file_id">文件id</param>
+		/// <returns></returns>
+		public void Submit(string file_type,int file_id)
+		{
+			//部门名称flow_dep_name以维护中的部门名称为准
+			//流程执行人角色flow_peo_duty：部门负责人，资产管理员，资产专责人，档案人员
+			//用户角色
+			DataTable dt;
+			string belong_dept;//归口部门
+			string h_belong_dept;//院级归口部门
+			string finance_dept;//财务部门
+			string office_dep;//办公室
+			string strsql;
+			switch (file_type)
+			{
+					#region 技改项目申请
+				case "技改项目申请":
+					this.jg_submit(file_type,file_id);
+					break;
+					#endregion
+
+					#region 资产大修申请
+				case "资产大修申请":
+					this.submit_repair(file_type,file_id);
+					break;
+					#endregion
+
+					#region 资产报废
+				case "资产报废":
+					//归口部门
+					string now_level="";//当前流程
+					strsql="select belong_dept from asset_kind where asset_kind in (select asset_king from  t_bf_detail where bf_id="+file_id+")";
+					
+					dt=this.GetTable(strsql);
+					int count=dt.Rows.Count;
+					string [] belong_dept1=new string[count];
+					for (int i=0;i<count;i++)
+					{
+						belong_dept1[i]=dt.Rows[i]["belong_dept"].ToString().Trim();
+					}
+					dt.Clear();
+					//财务部门
+					strsql="select dept from person_dept where dept_kind like '%,财务部门,%'";					
+					this.RunSql(strsql,out finance_dept);
+					//办公室
+					strsql="select dept from person_dept where dept_kind like '%,办公室,%'";					
+					this.RunSql(strsql,out office_dep);
+					//院级归口部门
+					strsql="select dept from person_dept where dept_kind like '%,院级归口部门,%'"; 					
+					this.RunSql(strsql,out h_belong_dept);	
+
+					strsql="delete t_flow where file_type='资产报废' and file_id="+file_id;//删除原有提交
+	
+					if(this.user_role.IndexOf(",部门负责人,")!=-1)//填表人是部门负责人
+					{
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产报废',"+file_id+",'"+this.dep_name+"','部门负责人',1,'"+this.user_name+"',getdate(),'提交','部门负责人')";
+					}
+					else
+					{
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_dep_kind) values('资产报废',"+file_id+",'"+this.dep_name+"','部门负责人',1,'部门负责人')";
+						now_level=this.dep_name+"/部门负责人,";//当前流程是本部门负责人
+					}
+					for(int i=0;i<belong_dept1.Length;i++)//归口部门
+					{
+						if(this.dep_name== belong_dept1[i] && this.user_role.IndexOf(",资产专责人,")!=-1 && this.user_role.IndexOf(",部门负责人,")!=-1)//发送人即是归口部门资产专责人
+						{
+							strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产报废',"+file_id+",'"+belong_dept1[i]+"','资产专责人',2,'"+this.user_name+"',getdate(),'提交','归口部门')";
+						}
+						else
+						{
+							strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_dep_kind) values('资产报废',"+file_id+",'"+belong_dept1[i]+"','资产专责人',2,'归口部门')";
+							if(now_level=="")
+								now_level=now_level+belong_dept1[i]+"/资产专责人,";//当前流程是归口部门
+						}
+					}
+					if(now_level!="")
+						now_level=now_level.Substring(0,now_level.Length-1);
+					//财务部门
+					if(this.dep_name== finance_dept && this.user_role.IndexOf(",部门负责人,")!=-1 && now_level=="")//填表部门=财务部门
+					{
+						//前面流程都是本人
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产报废',"+file_id+",'"+finance_dept+"','部门负责人',3,'"+this.user_name+"',getdate(),'提交','财务部')";
+
+					}
+					else
+					{
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产报废',"+file_id+",'"+finance_dept+"','部门负责人',3,'财务部')";
+						if(now_level=="")
+							now_level=finance_dept+"/部门负责人";//当前流程是归口部门
+					}
+
+					//院级归口
+					if(this.dep_name== h_belong_dept && this.user_role.IndexOf(",资产专责人,")!=-1 && now_level=="")//填表部门=院级归口部门
+					{
+						//前面流程都是本人
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产报废',"+file_id+",'"+h_belong_dept+"','资产专责人',4,'"+this.user_name+"',getdate(),'提交','院级归口部门')";
+
+					}
+					else
+					{
+						strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind) values('资产报废',"+file_id+",'"+h_belong_dept+"','资产专责人',4,'院级归口部门')";
+						if(now_level=="")
+							now_level=h_belong_dept+"/资产专责人";//当前流程是院级归口部门
+					}	
+					
+//					//院级归口部门只能最后提交，即使填表人是院级归口部门的资产专责人，也不能同时提交。
+//					strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind) values('资产报废',"+file_id+",'"+h_belong_dept+"','资产专责人',4,'院级归口部门')";
+					//办公室
+					strsql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind) values('资产报废',"+file_id+",'"+office_dep+"','部门负责人',5,'院长办公会/院多经董事会')";
+					if(now_level=="")
+						now_level=office_dep+"/部门负责人";//当前流程是办公室
+					//更新报废表的状态
+					strsql+=";update t_bf set state_code=1,submit_date=getdate(),current_flow='"+now_level+"'  where bf_id="+file_id;
+
+					this.RunSql(strsql);
+					break;
+					#endregion
+
+					#region 技改项目验收
+				case "技改项目验收":
+					//二级流程提交数
+					//int count_sec=0;
+					//更改state_code
+				    strsql="update asset_jg_yeshou set state_code='1' where id='"+file_id+"'";
+				    this.RunSql(strsql);
+					//in_time 是否为空
+					string intime="";
+					strsql="select in_time from asset_jg_yeshou where id='"+file_id+"'";
+					this.RunSql(strsql,out intime);
+					//填写财务部门负责人
+					string acc_dept=get_dept("财务部门");
+					if(this.user_role.IndexOf(",部门负责人,")!=-1&&this.dep_kind.IndexOf(",财务部门,")!=-1&&intime!=""&&intime!=null)
+					{
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_executant,flow_executdate,flow_executresult,flow_dep_kind)"+
+							" values('技改项目验收','"+file_id+"','"+this.dep_name+"','部门负责人','1','"+this.user_name+"','"+System.DateTime.Today.ToShortDateString()+"','提交','财务部门')";
+						this.RunSql(strsql);
+					}
+					else
+					{
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+							" values('技改项目验收','"+file_id+"','"+acc_dept+"','部门负责人','1','财务部门')";
+						this.RunSql(strsql);
+					}
+					//院级归口部门
+					string offi_dept=get_dept("院级归口部门");
+					if(this.dep_name==offi_dept&&this.user_role.IndexOf(",资产专责人,")!=-1)
+					{
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_executant,flow_executdate,flow_executresult,flow_dep_kind)"+
+								" values('技改项目验收','"+file_id+"','"+this.dep_name+"','资产专责人','1','"+this.user_name+"','"+System.DateTime.Today.ToShortDateString()+"','提交','院级归口部门')";
+						this.RunSql(strsql);
+					}
+					else
+					{			
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+								" values('技改项目验收','"+file_id+"','"+offi_dept+"','资产专责人','1','院级归口部门')";
+				    	this.RunSql(strsql);
+					}
+					//使用部门
+					string use_dept="";
+					this.RunSql("select use_dept from asset_jg_yeshou where id='"+file_id+"'",out use_dept);
+					if(this.dep_name==use_dept&&this.user_role.IndexOf(",资产管理员,")!=-1)
+					{
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_executant,flow_executdate,flow_executresult,flow_dep_kind)"+
+							" values('技改项目验收','"+file_id+"','"+this.dep_name+"','资产管理员','1','"+this.user_name+"','"+System.DateTime.Today.ToShortDateString()+"','提交','使用部门')";
+						this.RunSql(strsql);
+					}
+					else
+					{			
+						strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+							" values('技改项目验收','"+file_id+"','"+use_dept+"','资产管理员','1','使用部门')";
+						this.RunSql(strsql);
+					}
+					//档案人员
+					string strnull="";
+					string person_dept="";
+					string num="";
+					this.RunSql("select count(*) as num from asset_jg_yeshou where id='"+file_id+"' and singleprice>1",out num);
+					if(int.Parse(num)>0)
+					{
+					   this.RunSql("select dept from person_dept where person !='"+strnull+"'",out person_dept);
+						if(this.dep_name==person_dept&&this.user_role.IndexOf(",档案人员,")!=-1)
+						{
+							strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_executant,flow_executdate,flow_executresult,flow_dep_kind)"+
+								" values('技改项目验收','"+file_id+"','"+this.dep_name+"','档案人员','1','"+this.user_name+"','"+System.DateTime.Today.ToShortDateString()+"','提交','档案人员')";
+							this.RunSql(strsql);
+						}
+						else
+						{			
+							strsql="insert into t_flow(file_type,file_id,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+								" values('技改项目验收','"+file_id+"','"+person_dept+"','档案人员','1','档案人员')";
+							this.RunSql(strsql);
+						}
+					}
+					break;
+					#endregion
+
+					#region 无偿调入验收
+				case "无偿调入验收":
+					//无偿调入验收表
+					string file_name="asset_free_in";
+					asset_submit(file_name,file_id,file_type);
+					break;
+					#endregion
+
+                    #region 捐赠验收
+				case "捐赠验收":
+					//捐赠验收表
+					string file_name2="asset_donate";
+					asset_submit(file_name2,file_id,file_type);
+					break;
+					#endregion  
+
+					#region 新增固定资产明细
+				case "新增固定资产明细":
+					//使用部门即填表部门
+					string sql="select use_dep,submit_man from t_gdzc_detail_newadd where id="+file_id;
+					string modify_dep;//填表部门
+					string modify_man;//填表人
+					
+					dt=this.GetTable(sql);
+					modify_dep=dt.Rows[0]["use_dep"].ToString();
+					modify_man=dt.Rows[0]["submit_man"].ToString();
+					dt.Clear();
+					//归口部门
+					sql="select belong_dept from asset_kind where asset_kind in (select asset_king from  t_gdzc_detail_newadd where id="+file_id+")";
+					
+					this.RunSql(sql,out belong_dept);
+					//院级归口部门
+					
+					sql="select dept from person_dept where dept_kind like '%,院级归口部门,%'";  
+					
+					this.RunSql(sql,out h_belong_dept);
+					//财务部门
+					
+					sql="select dept from person_dept where dept_kind like '%,财务部门,%'";
+					
+					this.RunSql(sql,out finance_dept);
+
+					sql="delete t_flow where file_type='新增固定资产明细' and file_id="+file_id;//删除原有提交
+					
+					if(modify_dep== belong_dept && this.user_role.IndexOf(",资产专责人,")!=-1)//填表部门=归口部门
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('新增固定资产明细',"+file_id+",'"+belong_dept+"','资产专责人',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('新增固定资产明细',"+file_id+",'"+belong_dept+"','资产专责人',1)";
+					}
+					if(modify_dep== h_belong_dept && this.user_role.IndexOf(",资产专责人,")!=-1)//填表部门=院级归口部门
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('新增固定资产明细',"+file_id+",'"+h_belong_dept+"','资产专责人',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('新增固定资产明细',"+file_id+",'"+h_belong_dept+"','资产专责人',1)";
+					}
+					if(modify_dep== finance_dept && this.user_role.IndexOf(",部门负责人,")!=-1)//填表部门=财务部门
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('新增固定资产明细',"+file_id+",'"+finance_dept+"','部门负责人',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('新增固定资产明细',"+file_id+",'"+finance_dept+"','部门负责人',1)";
+					}
+					this.RunSql(sql);
+					break;
+					#endregion
+
+                    #region 资产变动 
+				case "资产变动":
+					//原使用部门
+					string sql1="select origin_use_dept from asset_alteration where id='"+file_id+"'";  
+					string origin_use_dept;//原使用部门
+					this.RunSql(sql1,out origin_use_dept);
+					//---------------------用于固定资在用—-----------------
+					sql1="select t1.run_state from t_gdzc_detail t1,asset_alteration t2 where t1.id=t2.detril_id and t2.id='"+file_id+"'";
+					string run_state;//运营状态
+					this.RunSql(sql1,out run_state);
+					//------------------------------------------------------
+					//现在使用部门
+					sql1="select now_use_dept from asset_alteration where id='"+file_id+"'";  
+					string now_use_dept;//现使用部门
+					this.RunSql(sql1,out now_use_dept);
+					//院级归口部门
+					string str1=",院级归口部门,";
+					sql1="select dept from person_dept where dept_kind like '%"+str1+"%'";  
+					string h_belong_dept1;//院级归口部门
+					this.RunSql(sql1,out h_belong_dept1);
+					//财务部门
+					string str1111=",财务部门,";
+					sql1="select dept from person_dept where dept_kind like '%"+str1111+"%'";
+					string finance_dept1;//财务部门
+					this.RunSql(sql1,out finance_dept1);
+					//file_type , file_id , flow_dep_name , flow_peo_duty, flow_level, flow_executant , flow_executdate , flow_executresult 
+					if(run_state!="停用")  //在用控制
+					{
+						if(this.dep_name==origin_use_dept)
+						{
+							sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产变动',"+file_id+",'"+this.dep_name+"','资产管理员',1,'"+this.user_name+"',getdate(),'提交','原使用部门')";
+						}
+						else
+						{
+							sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产变动',"+file_id+",'"+origin_use_dept+"','资产管理员',1,'原使用部门')";
+						}
+					}
+					if(now_use_dept!="")  //停用控制
+					{
+						if(this.dep_name==now_use_dept)
+						{
+							sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产变动',"+file_id+",'"+this.dep_name+"','资产管理员',1,'"+this.user_name+"',getdate(),'提交','现使用部门')";
+						}
+						else
+						{
+							sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产变动',"+file_id+",'"+now_use_dept+"','资产管理员',1,'现使用部门')";
+						}
+					}
+					if(this.dep_name== finance_dept1 && this.user_role.IndexOf(",部门负责人,")!=-1)
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产变动',"+file_id+",'"+this.dep_name+"','部门负责人',2,'"+this.user_name+"',getdate(),'提交','财务部门')";
+					}
+					else
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind) values('资产变动',"+file_id+",'"+finance_dept1+"','部门负责人',2,'财务部门')";
+					}
+					if(this.dep_name== h_belong_dept1 && this.user_role.IndexOf(",资产专责人,")!=-1)
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产变动',"+file_id+",'"+this.dep_name+"','资产专责人',3,'"+this.user_name+"',getdate(),'提交','院级归口部门')";
+						sql1+=";update asset_alteration set alter_time='"+System.DateTime.Today.ToShortDateString()+"' where id='"+file_id+"'";
+					}
+					else
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_dep_kind) values('资产变动',"+file_id+",'"+h_belong_dept1+"','资产专责人',3,'院级归口部门')";
+						sql1+=";update asset_alteration set alter_time='"+System.DateTime.Today.ToShortDateString()+"' where id='"+file_id+"'";
+					}
+					this.RunSql(sql1);
+					strsql="update asset_alteration set state_code=(select state_code from t_state where file_type='"+
+						file_type+"'and state='已提交') where id='"+file_id+"'";
+					this.RunSql(strsql);
+					break;
+					#endregion
+
+					#region 固定资产明细修改日志
+				case "固定资产明细修改日志":
+					//使用部门
+					 sql="select use_dep,modify_dep,modify_man from t_gdzc_detail_modify where id="+file_id;
+					string use_dep;//使用部门
+					// modify_dep;//填表部门
+					// modify_man;//填表人					
+					dt=this.GetTable(sql);
+					use_dep=dt.Rows[0]["use_dep"].ToString();
+					modify_dep=dt.Rows[0]["modify_dep"].ToString();
+					modify_man=dt.Rows[0]["modify_man"].ToString();
+					//归口部门
+					sql="select belong_dept from asset_kind where asset_kind in (select asset_king from  t_gdzc_detail_modify where id="+file_id+")";
+					//string belong_dept;//归口部门
+					this.RunSql(sql,out belong_dept);
+					//					//院级归口部门
+					//					string str=",院级归口部门,";
+					//					sql="select dept from person_dept where dept_kind like '%"+str+"%'";  
+					//					string h_belong_dept;//院级归口部门
+					//					this.RunSql(sql,out h_belong_dept);
+					//财务部门
+					
+					sql="select dept from person_dept where dept_kind like '%,财务部门,%'";
+					//string finance_dept;//财务部门
+					this.RunSql(sql,out finance_dept);
+					//file_type , file_id , flow_dep_name , flow_peo_duty, flow_level, flow_executant , flow_executdate , flow_executresult 
+					if(modify_dep== use_dep)//使用部门=填表部门
+					{
+						sql="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('固定资产明细修改日志',"+file_id+",'"+use_dep+"','资产管理员',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('固定资产明细修改日志',"+file_id+",'"+use_dep+"','资产管理员',1)";
+					}
+					if(modify_dep== belong_dept && this.user_role.IndexOf(",资产专责人,")!=-1)//填表部门=归口部门
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('固定资产明细修改日志',"+file_id+",'"+belong_dept+"','资产专责人',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('固定资产明细修改日志',"+file_id+",'"+belong_dept+"','资产专责人',1)";
+					}
+					//					if(modify_dep== h_belong_dept && this.user_role.IndexOf(",资产专责人,")!=-1)//填表部门=院级归口部门
+					//					{
+					//						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('固定资产明细修改日志',"+file_id+",'"+h_belong_dept+"','资产专责人',3,'"+modify_man+"',getdate(),'提交')";
+					//					}
+					//					else
+					//					{
+					//						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('固定资产明细修改日志',"+file_id+",'"+h_belong_dept+"','资产专责人',3)";
+					//					}
+					if(modify_dep== finance_dept && this.user_role.IndexOf(",部门负责人,")!=-1)//填表部门=财务部门
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('固定资产明细修改日志',"+file_id+",'"+finance_dept+"','部门负责人',1,'"+modify_man+"',getdate(),'提交')";
+					}
+					else
+					{
+						sql+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('固定资产明细修改日志',"+file_id+",'"+finance_dept+"','部门负责人',1)";
+					}
+					this.RunSql(sql);
+					break;
+					#endregion
+
+					#region 代管理固定资产验收
+				case "代管固定资产验收":
+					//资产代管表
+					string file_name1="asset_deputize";
+					asset_submit(file_name1,file_id,file_type);
+					break;
+                    #endregion 
+
+					#region 代管固定资产明细   
+				case "代管固定资产明细":
+					string file_name22="asset_deputize_list";
+					asset_submit(file_name22,file_id,file_type);
+             	    break;
+					#endregion
+			}
+		}
+
+		#region 验收提交-JACK
+		/// <summary>
+		/// 在流程表中的填写审核提交内容
+		/// </summary>
+		///  <param name="file_id">文件的id</param>
+		public void Audit(string flow_id)
+		{
+			string str="提交"; 
+			string strsql="";
+			//填写流程表中的对应的项
+			strsql="update t_flow set flow_executant='"+this.user_name.ToString()+
+				"',flow_executdate='"+System.DateTime.Today.ToShortDateString()+
+				"',flow_executresult='"+str+"' where id='"+flow_id+"'";
+			this.RunSql(strsql);
+		}
+		#endregion 
+
+		public void Execute_Flow(string file_type,int file_id,int flow_id)
+		{
+		}
+		/// <summary>
+		/// 判断登陆人是否是流程执行人，或者是填表部门的资产管理员
+		/// </summary>
+		/// <param name="file_type">文件类型：技改项目申请，资产大修申请，资产报废申请,技改项目验收,无偿调入验收,捐赠验收,新增固定资产明细,资产变动,固定资产明细修改日志,资产代管，代管资产明细</param>
+		/// <param name="file_id">文件id</param>
+		/// <param name="file_depname">填表部门</param>
+		/// <param name="dep_name">登陆人所属部门</param>
+		/// <param name="user_role">登陆人角色</param>
+		/// <param name="flow_id">流程id</param>
+		/// <returns>true代表是流程执行人，并且等待其执行流程。flow_id返回流程的ID
+		/// false分为两种情况：1、返回参数flow_id=""代表该登陆人只能浏览
+		/// 2、返回参数flow_id="0"代表该登陆人是填表部门的资产管理员</returns>
+		public bool Is_Submit(string file_type,int file_id,string file_depname,string dep_name,string user_role,out string flow_id)
+		{
+			
+			//取出该表单的所有流程记录
+			string strSql="select * from t_flow where file_type='"+file_type+"' and file_id="+file_id+" order by flow_level";
+			DataTable dt=this.GetTable(strSql);
+			if(dt.Rows.Count>0)//已提交
+			{
+				//本部门未提交的流程
+				DataRow [] dr=dt.Select("flow_dep_name='"+dep_name+"' and isnull(flow_executresult,'')<>'提交'","flow_level");
+				if(dr.Length>0)//流程涉及该部门,并且流程未执行
+				{
+					//bool is_level=false;//是否该本人执行指针
+					string flow_level="";//第一个需要改人执行的流程级别
+					//该部门之前的流程
+					DataRow [] dr1=dt.Select("flow_level<"+dr[0]["flow_level"].ToString()+" and isnull(flow_executresult,'')<>'提交'");
+					if(dr1.Length>0)//还未提交到该部门
+					{
+						flow_id="";
+						return false;
+					}
+					else//流程已提交到该部门，等待执行
+					{
+						//所有未提交的流程
+						DataRow [] dr_all=dt.Select(" isnull(flow_executresult,'')<>'提交'","flow_level");
+
+						//判断登陆人是否是执行流程的角色
+						flow_id="";
+						flow_level=dr_all[0]["flow_level"].ToString();
+						bool flow_up=true;//false代表同级流程其它部门还未提交
+						//bool flow_continue=true;//本部门是否可以连续签字
+						for(int i=0;i<dr_all.Length;i++)
+						{
+							if(flow_level==dr_all[i]["flow_level"].ToString())
+							{
+								if( dep_name.Trim()==dr_all[i]["flow_dep_name"].ToString().Trim() && user_role.IndexOf(","+dr_all[i]["flow_peo_duty"].ToString()+",")!=-1)//是流程执行人
+								{
+									flow_id+=dr_all[i]["id"].ToString()+",";//返回流程id，多个流程用“，”分隔
+								}
+								else
+								{									
+									flow_up=false;//同级流程其它部门还未提交
+								}
+								
+							}
+							else//下一级流程
+							{
+								if(flow_up)//上级流程全部提交
+								{
+									flow_level=dr_all[i]["flow_level"].ToString();
+									if( dep_name==dr_all[i]["flow_dep_name"].ToString() && user_role.IndexOf(","+dr_all[i]["flow_peo_duty"].ToString()+",")!=-1)//是流程执行人
+									{
+										flow_id+=dr_all[i]["id"].ToString()+",";//返回流程id，多个流程用“，”分隔
+									}
+									else
+									{									
+										flow_up=false;//同级流程其它部门还未提交
+									}
+								}
+								else
+								{
+									break;//跳出循环
+								}
+								
+
+									   
+							}
+						}
+						if(flow_id.Trim().Length>0)
+						{
+							flow_id=flow_id.Substring(0,flow_id.Length-1);
+							return true;
+						}
+						else//不是流程执行人
+						{
+							flow_id="";
+							return false;
+						}
+						
+						
+					}
+				}
+				else//流程不设计该部门或流程已提交
+				{
+					flow_id="";
+					return false;
+				}
+			}
+			else//未提交
+			{
+				if(file_depname==dep_name)//登陆人的部门与表单填写部门相同
+				{
+					//判断登陆人是否是表单填写部门的资产管理员
+					if(user_role.IndexOf(",资产管理员,")!=-1)//是
+					{
+						flow_id="0";
+						return false;
+					}
+					else//不是
+					{
+						flow_id="";
+						return false;
+					}
+
+				}
+				else
+				{
+					flow_id="";
+					return false;
+				}
+			}
+			//获取
+		}
+		
+		/// <summary>
+		/// 动态生成列表背景颜色说明
+		/// </summary>
+		/// <param name="file_type">文件类型</param>
+		/// <param name="lbl">显示说明文字的Lable控件的id</param>
+		public void BackColorGuide(string file_type,System.Web.UI.WebControls.Label lbl)
+		{
+			string sql="select * from t_state where file_type='"+file_type+"'";
+			DataTable dt=this.GetTable(sql);
+			if(dt.Rows.Count>0)
+			{
+				for(int i=0;i<dt.Rows.Count;i++)
+				{
+					lbl.Text+="<font color="+dt.Rows[i]["backcolor"].ToString()+">"+dt.Rows[i]["colorblock"].ToString()+"</font>"+dt.Rows[i]["state"].ToString()+" ";
+				}
+				lbl.Text="(背景色说明："+lbl.Text+")";
+			}
+			dt.Clear();
+			_ds.Clear();
+		}
+		//----------------------------页面输出到word－－－－－－－－－－－－－－－－－－－
+		/// <summary>
+		/// 将页面输出到word
+		/// </summary>
+		/// <param name="lbl_Title">标题控件</param>
+		/// <param name="ctl_Table">表格内容控件</param>
+		/// <param name="filename">文件名称</param>
+		public void ToWord(System.Web.UI.Control ctl_Table,string filename)  
+		{
+			
+			HttpContext.Current.Response.AppendHeader("Content-Disposition","attachment;filename="+filename);
+			HttpContext.Current.Response.Charset ="UTF-8";				
+			HttpContext.Current.Response.ContentEncoding =System.Text.Encoding.UTF8;
+			HttpContext.Current.Response.ContentType ="application/msword";//image/JPEG;text/HTML;image/GIF;vnd.ms-excel/msword
+			ctl_Table.Page.EnableViewState =false;	
+			System.IO.StringWriter  tw = new System.IO.StringWriter() ;
+			System.Web.UI.HtmlTextWriter hw = new System.Web.UI.HtmlTextWriter (tw);
+			ctl_Table.RenderControl(hw);
+			HttpContext.Current.Response.Write(tw.ToString());
+			HttpContext.Current.Response.End();
+			ctl_Table.Page.EnableViewState =true;
+		}
+		public void ToExcel(System.Web.UI.Control ctl_Table,string filename)  
+		{
+			HttpContext.Current.Response.AppendHeader("Content-Disposition","attachment;filename="+filename);
+			HttpContext.Current.Response.Charset ="UTF-8";				
+			HttpContext.Current.Response.ContentEncoding =System.Text.Encoding.UTF8;
+			HttpContext.Current.Response.ContentType ="application/ms-excel";//image/JPEG;text/HTML;image/GIF;vnd.ms-excel/msword
+			ctl_Table.Page.EnableViewState =false;	
+			System.IO.StringWriter  tw = new System.IO.StringWriter() ;
+			System.Web.UI.HtmlTextWriter hw = new System.Web.UI.HtmlTextWriter (tw);
+			ctl_Table.RenderControl(hw);
+			HttpContext.Current.Response.Write(tw.ToString());
+			HttpContext.Current.Response.End();
+			ctl_Table.Page.EnableViewState =false;
+		}
+		public void ToHTML(System.Web.UI.Control ctl_Table,string filename)  
+		{
+			HttpContext.Current.Response.AppendHeader("Content-Disposition","attachment;filename="+filename);
+			HttpContext.Current.Response.Charset ="UTF-8";				
+			HttpContext.Current.Response.ContentEncoding =System.Text.Encoding.UTF8;
+			HttpContext.Current.Response.ContentType ="application/HTML";//image/JPEG;text/HTML;image/GIF;vnd.ms-excel/msword
+			ctl_Table.Page.EnableViewState =false;	
+			System.IO.StringWriter  tw = new System.IO.StringWriter() ;
+			System.Web.UI.HtmlTextWriter hw = new System.Web.UI.HtmlTextWriter (tw);
+			ctl_Table.RenderControl(hw);
+			HttpContext.Current.Response.Write(tw.ToString());
+			HttpContext.Current.Response.End();
+			ctl_Table.Page.EnableViewState =false;
+		}
+		
+		public string GetPageHtml(string url,string FileName)
+		{
+			string Result;
+			WebResponse MyResponse;
+			WebRequest MyRequest = System.Net.HttpWebRequest.Create(url);
+			MyResponse = MyRequest.GetResponse();
+			using (StreamReader MyReader = new StreamReader(MyResponse.GetResponseStream(),System.Text.Encoding.UTF8))
+			{
+				Result = MyReader.ReadToEnd();
+				MyReader.Close();
+			}
+			string Path=System.Configuration.ConfigurationSettings.AppSettings["path"];
+			FileStream fs = new FileStream(Path+FileName,FileMode.Create,FileAccess.Write);
+			StreamWriter sw = new StreamWriter(fs,System.Text.Encoding.UTF8);
+			sw.WriteLine(Result);
+			sw.Close();
+			fs.Close();
+			return Result;
+		} 
+		public string SendMail(string Url,string FileName,string EmailUserId,
+			                   string EmailUserPwd,string EmailTitle,string SendPeo,
+			                   string EmailAddress,string SendEmailAddress)
+		{
+			string ReturnContent="";
+			string Path=System.Configuration.ConfigurationSettings.AppSettings["path"];
+			string EmailServer=System.Configuration.ConfigurationSettings.AppSettings["Email_Server"];
+
+			this.GetPageHtml(Url,FileName);
+//			smtpMail.ESMTP_Account=EmailUserId;
+//			smtpMail.ESMTP_PassWord=EmailUserPwd;
+//			smtpMail.MailServer=EmailServer;
+//			smtpMail.Subject=EmailTitle;
+//			smtpMail.From=SendPeo;
+//			smtpMail.FromAddr=EmailAddress;
+//			smtpMail.ESMTP_AuthMode = CRM.EmailAuthMode.User_LOGIN;
+//			smtpMail.AddRecipient(SendEmailAddress,CRM.SendMode.Normal);
+//			smtpMail.AddAttachment(Path+FileName);
+//			try
+//			{
+//				if(smtpMail.Send())
+//				{
+					ReturnContent="邮件发送成功！";
+//				}
+//				else
+//				{
+//					ReturnContent=smtpMail.ErrorMessage.ToString ();
+//				}
+//			}
+//			catch
+//			{
+//				ReturnContent=smtpMail.ErrorMessage.ToString ();
+//			}
+			jmail.Message Jmail=new jmail.MessageClass();
+//			DateTime t=DateTime.Now;   
+			String Subject=EmailTitle;   
+			String body="";
+			String FromEmail=EmailAddress;   
+			String ToEmail=SendEmailAddress;
+			//Silent属性：如果设置为true,JMail不会抛出例外错误. JMail. Send( () 会根据操作结果返回true或false
+			Jmail.Silent=true;
+			//Jmail创建的日志，前提loging属性设置为true
+			Jmail.Logging=true;
+			//字符集，缺省为"US-ASCII"
+			Jmail.Charset="GB2312";
+			//信件的contentype. 缺省是"text/plain"） : 字符串如果你以HTML格式发送邮件, 改为"text/html"即可。
+			//Jmail.ContentType="text/html";
+			//添加收件人
+			Jmail.AddRecipient(ToEmail,"","");
+			Jmail.From=FromEmail;
+			//发件人邮件用户名
+			Jmail.MailServerUserName=EmailUserId;
+			//发件人邮件密码
+			Jmail.MailServerPassWord=EmailUserPwd ;
+			//设置邮件标题
+			Jmail.Subject=Subject;
+			//邮件添加附件,(多附件的话，可以再加一条Jmail.AddAttachment( "c:\\test.jpg",true,null);)就可以搞定了。［注］：加了附件，讲把上面的Jmail.ContentType="text/html";删掉。否则会在邮件里出现乱码。
+			Jmail.AddAttachment( Path+FileName,true,null);
+			//邮件内容
+			Jmail.Body=body;//+t.ToString();
+			//Jmail发送的方法
+			Jmail.Send(EmailServer,false);
+			Jmail.Close() ;
+			return ReturnContent;
+		}
+
+		/// <summary>
+		/// 重载2：绑定树控件并显示——>节点有连接,连接传递一个参数,传递的参数是location
+		/// </summary>
+		/// <param name="f_key">数据库表关键字key值名</param>
+		/// <param name="f_parentkey">数据库表保存父节点id值字段名</param>
+		/// <param name="f_text">节点显示文字树数据库表字段名</param>
+		/// <param name="str_Sql">Select-SQL语句</param>
+		/// <param name="Frame">单击树节点时连接的目标框架</param>
+		/// <param name="Url">单击时连接网页名</param>
+		/// <param name="tv">TreeView控件id值</param>
+		public void  BindTreeView(string f_key,string f_parentkey,string location,string f_text,string str_Sql,string Frame,string Url,TreeView tv)
+		{
+			tv.Nodes.Clear(); // 清空树
+			DataTable dt=this.GetTable(str_Sql); // 获得树的内存表
+			TreeNode rootnode=new TreeNode();
+			rootnode.Text=dt.Rows[0][f_text].ToString(); // 给节点绑定显示值
+			rootnode.NodeData=dt.Rows[0][location].ToString(); // 给节点绑定key值
+			rootnode.Expanded=true; //　默认根结点为展开
+			rootnode.Target = Frame;
+			rootnode.NavigateUrl = Url+"?"+location+"=" + dt.Rows[0][location].ToString();
+			tv.Nodes.Add(rootnode);
+			string parentid=dt.Rows[0][f_parentkey].ToString()+dt.Rows[0][f_key].ToString()+"_"; //　他子节点的parentid字段值
+			this.CreateNode1(f_key,f_parentkey,location,f_text,Frame,Url,parentid,rootnode,dt);//　加入所有根结点以下的结点　												
+			dt.Clear();
+			//ds.Dispose();
+		}
+		/// <summary>
+		/// 重载2：绑定树控件并显示——>节点有连接,连接传递一个参数,传递的参数是location
+		/// </summary>
+		/// <param name="f_key">数据库表关键字key值名</param>
+		/// <param name="f_parentkey">数据库表保存父节点id值字段名</param>
+		/// <param name="f_text">节点显示文字树数据库表字段名</param>
+		/// <param name="str_Sql">Select-SQL语句</param>
+		/// <param name="Frame">单击树节点时连接的目标框架</param>
+		/// <param name="Url">单击时连接网页名</param>
+		/// <param name="tv">TreeView控件id值</param>
+		
+		public void CreateNode1(string f_key,string f_parentkey,string location,string f_text,string Frame,string Url,string parentid,TreeNode parentnode,DataTable dt)
+		{
+			//DataTable dt1=this.GetTable ("select * from t_sys_placetree");
+			DataRow [] drs = dt.Select(f_parentkey +"= '" + parentid + "'");//　选出所有子节点
+			//遍历所有子节点
+			foreach( DataRow r in drs )
+			{
+				TreeNode tempnode = new TreeNode();
+				tempnode.Text = r[f_text].ToString();
+				tempnode.NodeData = r[location].ToString();
+				parentnode.Nodes.Add(tempnode);
+				tempnode.Expanded=true;
+
+				tempnode.Target = Frame;
+				tempnode.NavigateUrl = Url+"?"+location+"=" + r[location].ToString();
+				parentid=r[f_parentkey].ToString()+r[f_key].ToString()+"_";
+				CreateNode1(f_key,f_parentkey,location,f_text,Frame,Url,parentid,tempnode,dt);
+			}
+		}
+
+		#region 验收提交模块-jack
+		/// <summary>
+		/// 无偿调入验收，捐赠验收，代管验收 资产管理员提交模块
+		/// </summary>
+		/// <param name="file_type">文件类型 例如：无偿调入验收</param>
+		///<param name="file_id">文件id</param>
+		///<param name="file_name">文件名称 例如：asset_free_in</param>
+		private void  asset_submit(string file_name,int file_id,string file_type)
+		{
+			string str111="提交";
+			string str1="普通归口部门";
+			//用户角色
+			string str_duty1="部门负责人";
+			//string str_duty2="资产管理员";
+			string str_duty3="资产专责人";
+			string str_duty4="档案人员";
+			//流程状态  已提交
+			string state_code="1";
+			string strsql="";
+			DataSet ds1=new DataSet();
+			//审核该资产的归口部门 -名称-部门键值-部门性质-false 普通归口部门 true 院级归口部门-1
+			string str_dept_name1="", str_dept_key1="", str_dept_kind1="";
+			//院级归口部门 -名称-部门键值-部门性质-2
+			string str_dept_name2="",str_dept_key2="",str_dept_kind2="";
+			//财务部门 -名称-部门键值-部门性质-3
+			string str_dept_name3="",str_dept_key3="", str_dept_kind3="";
+			//档案人员所在部门-名称-部门键值-4
+			string str_dept_name4="", str_dept_key4="";
+			//获取审核该资产的归口部门-名称-部门性质-部门键值-
+			strsql="select distinct t3.dept, t3.dept_kind,t3.dept_key,t3.person from asset_kind t1, "+file_name+" t2,person_dept t3 where t2.id='"+file_id+"'and "+
+				" t1.asset_kind=t2.asset_kind and t1.belong_dept=t3.dept";
+			ds1=this.GetDs(strsql);
+			if(ds1.Tables[0].Rows.Count>0)
+			{
+				DataRow dr_bel_dept=ds1.Tables[0].Rows[0];
+				str_dept_name1=dr_bel_dept["dept"].ToString();   //部门名称
+				str_dept_kind1=dr_bel_dept["dept_kind"].ToString();//部门性质
+				str_dept_key1=dr_bel_dept["dept_key"].ToString();  //部门键值
+			}
+			ds1.Clear();
+			//填写普通归口部门审核信息
+			if(str_dept_kind1.IndexOf(str1)!=-1)  //该资产类别的归口部门的部门性质包括普通归口
+			{
+				strsql="insert into t_flow(file_type,file_id,flow_dep_key,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+					"values('"+file_type+"','"+file_id+"','"+str_dept_key1+"','"+str_dept_name1+"','"+str_duty3+"','"+state_code+"','普通归口部门')";
+				this.RunSql(strsql);
+			}
+			//--获取院级归口部门 -名称-部门键值-部门性质- 
+			string str=",院级归口部门,";
+			strsql="select * from person_dept where dept_kind like '%"+str+"%'";   
+			DataTable dt_offi=this.GetTable(strsql);
+			if(dt_offi.Rows.Count>0)
+			{
+				DataRow dr_offi=dt_offi.Rows[0];
+				str_dept_name2=dr_offi["dept"].ToString(); //部门名称
+				str_dept_key2=dr_offi["dept_key"].ToString();//部门键值
+				str_dept_kind2=dr_offi["dept_kind"].ToString();//部门性质
+				//填写院级归口部门审核信息
+				strsql="insert into t_flow(file_type,file_id,flow_dep_key,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+					"values('"+file_type+"','"+file_id+"','"+str_dept_key2+"','"+str_dept_name2+"','"+str_duty3+"','"+state_code+"','院级归口部门')";
+				this.RunSql(strsql);
+			}
+			//--获取财务部门 -名称-部门键值-部门性质-
+			string str11=",财务部门,";
+			strsql="select * from person_dept where dept_kind like '%"+str11+"%'";
+			DataTable dt_account=this.GetTable(strsql);
+			if(dt_account.Rows.Count>0)
+			{
+				DataRow dr_account=dt_account.Rows[0];
+				str_dept_name3=dr_account["dept"].ToString();//部门名称
+				str_dept_key3=dr_account["dept_key"].ToString();//部门键值
+				str_dept_kind3=dr_account["dept_kind"].ToString();//部门性质
+				//添写财务部门审核信息
+				strsql="insert into t_flow(file_type,file_id,flow_dep_key,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+					"values('"+file_type+"','"+file_id+"','"+str_dept_key3+"','"+str_dept_name3+"','"+str_duty1+"','"+state_code+"','财务部门')";
+				this.RunSql(strsql);
+			}
+			//填写档案人员
+			if(file_name=="asset_free_in"||file_name=="asset_donate")
+			{
+				bool flag=false;
+				//判断该资产需要不需要档案人员审核
+				strsql="select * from  "+file_name+" where singleprice>=10000 and id='"+file_id+"'";
+				DataTable dt1=new DataTable();
+				dt1=this.GetTable(strsql);
+				if(dt1.Rows.Count>0)
+				{
+					flag=true;
+				}
+				if(flag==true)
+				{
+					string str12="";
+					strsql="select * from person_dept where person!='"+str12+"'";
+					DataTable dt12=new DataTable();
+					dt12=this.GetTable(strsql);
+					if(dt12.Rows.Count>0)
+					{
+						DataRow dr=dt12.Rows[0];
+						str_dept_name4=dr["dept"].ToString();//部门名称
+						str_dept_key4=dr["dept_key"].ToString();//部门键值
+						//填写档案人员审核信息
+						strsql="insert into t_flow(file_type,file_id,flow_dep_key,flow_dep_name,flow_peo_duty,flow_level,flow_dep_kind)"+
+							"values('"+file_type+"','"+file_id+"','"+str_dept_key4+"','"+str_dept_name4+"','"+str_duty4+"','"+state_code+"','档案人员')";
+						this.RunSql(strsql);
+						if(this.dep_name==str_dept_name4)
+						{
+							if(this.user_role.IndexOf(",档案人员,")!=-1)
+							{
+								//流程提交人是档案人员，填写审核提交信息
+								strsql="update t_flow set flow_executant='"+this.user_name+"',flow_executdate='"+System.DateTime.Today.ToShortDateString()+
+									"',flow_executresult='"+str111+"' where file_type='"+file_type+
+									"'and file_id="+file_id+" and flow_dep_name='"+this.dep_name+"' and flow_peo_duty='"+str_duty4+"'";
+								this.RunSql(strsql);
+							}
+						}
+					}
+				}
+			}
+
+//			//资产管理员填写审核提交信息
+//			strsql="insert into t_flow(file_type,file_id,flow_dep_key,flow_dep_name,flow_peo_duty,flow_level,flow_executant,flow_executdate,flow_executresult)"+
+//				"values('"+file_type+"','"+file_id+"','"+this.dep_key.ToString()+"','"+this.dep_name.ToString()+"','"+str_duty2+"','"+state_code+"','"+this.user_name+"','"+System.DateTime.Today.ToShortDateString()+"','"+str111+"')";
+//			this.RunSql(strsql);
+//			//流程提交人是财务部门的部门负责人，填写审核提交信息
+			if(this.dep_kind.IndexOf(",财务部门,")!=-1)
+			{
+				if(this.user_role.IndexOf(",部门负责人,")!=-1)
+				{
+					strsql="update t_flow set flow_executant='"+this.user_name+"',flow_executdate='"+System.DateTime.Today.ToShortDateString()+
+						"',flow_executresult='"+str111+"' where file_type='"+file_type+
+						"'and file_id="+file_id+" and flow_dep_name='"+this.dep_name+"' and flow_peo_duty='"+str_duty1+"'";
+					this.RunSql(strsql);
+				}
+			}
+			//流程提交人是审核该资产的归口部门(为普通部门归口部门时)的资产专责人，填写审核提交信息
+			if(str_dept_kind1.IndexOf(str1)!=-1)
+			{
+				if(this.dep_name.ToString()==str_dept_name1)
+				{
+					if(this.user_role.IndexOf(",资产专责人,")!=-1)
+					{
+						strsql="update t_flow set flow_executant='"+this.user_name+"',flow_executdate='"+System.DateTime.Today.ToShortDateString()+
+							"',flow_executresult='"+str111+"' where file_type='"+file_type+
+							"'and file_id="+file_id+" and flow_dep_name='"+this.dep_name+"' and flow_peo_duty='"+str_duty3+"'";
+						this.RunSql(strsql);
+	
+					}
+				}
+			}
+			//流程提交人是院级归口部门的资产专责人，填写审核提交信息
+			if(this.dep_name.ToString()==str_dept_name2)
+			{
+				if(this.user_role.IndexOf(",资产专责人,")!=-1)
+				{
+					strsql="update t_flow set flow_executant='"+this.user_name+"',flow_executdate='"+System.DateTime.Today.ToShortDateString()+
+						"',flow_executresult='"+str111+"' where file_type='"+file_type+
+						"'and file_id="+file_id+" and flow_dep_name='"+this.dep_name+"' and flow_peo_duty='"+str_duty3+"'";
+					this.RunSql(strsql);
+				}
+			}
+			//流程提交后，更改文件的state_code表示已经提交
+			//从t_state表中获取表示file_type已提交的state_code
+			strsql="update "+file_name+" set state_code=(select state_code from t_state where file_type='"+
+				   file_type+"'and state='已提交') where id='"+file_id+"'";
+			this.RunSql(strsql);
+		}
+		#endregion
+
+		#region 资产大修申请流程提交
+		/// <summary>
+		/// 资产大修申请流程提交
+		/// </summary>
+		/// <param name="file_type">文件类型:资产大修申请</param>
+		/// <param name="file_id">文件ID:Asset_Repair_Opinion id</param>
+		private void submit_repair(string file_type,int file_id)
+		{
+            //删除已经存在的流程
+			string strsql001="delete t_flow where file_type='"+file_type+"' and file_id='"+file_id+"'";
+			this.RunSql(strsql001);
+			///////////////
+			bool flag=false,flag22=false,flag33=false;
+			//院级归口部门
+			string str1=",院级归口部门,";
+			string sql1="select dept from person_dept where dept_kind like '%"+str1+"%'";  
+			string h_belong_dept1="";//院级归口部门
+			this.RunSql(sql1,out h_belong_dept1);
+			//财务部门
+			string str1111=",财务部门,";
+			sql1="select dept from person_dept where dept_kind like '%"+str1111+"%'";
+			string finance_dept1="";//财务部门
+			this.RunSql(sql1,out finance_dept1);
+			//办公室
+			string str1122=",办公室,";
+			sql1="select dept from person_dept where dept_kind like '%"+str1122+"%'";
+			string offi="";//办公室
+			this.RunSql(sql1,out offi);
+			//申请部门负责人
+			if(this.user_role.IndexOf(",部门负责人,")!=-1)
+			{
+				sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('资产大修申请',"+file_id+",'"+this.dep_name+"','部门负责人',1,'"+this.user_name+"',getdate(),'提交')";
+			    flag33=true;
+			}
+			else
+			{
+				sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('资产大修申请',"+file_id+",'"+this.dep_name+"','部门负责人',1)";
+			}
+			string depname=this.Get_Dep_Inf(file_id.ToString());
+			string[] deptarray=depname.Split(',');
+			int count=0;
+			//普通归口部门
+			for(int k=0;k<deptarray.Length;k++)
+			{
+				if(deptarray[k]!=h_belong_dept1&&deptarray[k]!=finance_dept1&&deptarray[k]!=offi)
+				{
+					if(this.dep_name==deptarray[k]&&this.user_role.IndexOf(",资产专责人,")!=-1&&flag33==true)
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产大修申请',"+file_id+",'"+this.dep_name+"','资产专责人',2,'"+this.user_name+"',getdate(),'提交','归口部门')";
+					}
+					else
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产大修申请',"+file_id+",'"+deptarray[k]+"','资产专责人',2,'归口部门')";
+					}
+					count++;
+				}
+			}
+			
+			//财务部门
+			if(this.dep_name== finance_dept1 && this.user_role.IndexOf(",部门负责人,")!=-1&&count<=0)
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产大修申请',"+file_id+",'"+this.dep_name+"','部门负责人',3,'"+this.user_name+"',getdate(),'提交','财务部门')";
+			    flag=true;
+			}
+			else
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产大修申请',"+file_id+",'"+finance_dept1+"','部门负责人',3,'财务部门')";
+			}
+			//院级归口部门
+			if(this.dep_name==h_belong_dept1&&this.user_role.IndexOf(",资产专责人,")!=-1&&flag==true)
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产大修申请',"+file_id+",'"+this.dep_name+"','资产专责人',4,'"+this.user_name+"',getdate(),'提交','院级归口部门')";
+			    flag22=true;
+			}
+			else
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_dep_kind) values('资产大修申请',"+file_id+",'"+h_belong_dept1+"','资产专责人',4,'院级归口部门')";
+			}
+			//办公室
+			if(this.dep_name== offi && this.user_role.IndexOf(",部门负责人,")!=-1&&flag22==true)
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('资产大修申请',"+file_id+",'"+this.dep_name+"','部门负责人',5,'"+this.user_name+"',getdate(),'提交','院长办公会')";
+			}
+			else
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('资产大修申请',"+file_id+",'"+offi+"','部门负责人',5,'院长办公会')";
+			}
+			this.RunSql(sql1);	
+			sql1="update asset_repair_opinion set state_code=(select state_code from t_state where file_type='"+
+				file_type+"'and state='已提交') where id='"+file_id+"'";
+			this.RunSql(sql1);
+		}
+
+	    #region 获取明细记录里资产审核需要的归口部门信息
+		//需要资产类别表   asset_kind
+ 		private string  Get_Dep_Inf(string id)
+ 		{
+ 			string dep_name="";
+ 			string sql="select distinct t1.belong_dept from asset_kind t1,asset_repair_opinion t2,asset_repair t3"+
+                       " where t2.id='"+id+"' and t2.id=t3.repair_opinion_id and t3.asset_kind=t1.asset_kind ";
+			DataTable dt=new DataTable();
+ 			dt=this.GetTable(sql);
+ 			if(dt.Rows.Count>0)
+ 			{
+ 				for(int i=0;i<dt.Rows.Count;i++)
+ 				{
+ 					dep_name+=dt.Rows[i]["belong_dept"].ToString()+",";
+ 				}
+ 			}
+			dep_name=dep_name.Substring(0,dep_name.Length-1);
+		    return dep_name;
+		}
+ 		#endregion
+
+		#endregion
+
+		#region 技改项目申请提交
+		private void jg_submit(string file_type,int file_id )
+		{
+		    string str009="delete t_flow where file_type='技改项目申请' and file_id='"+file_id+"'";
+			this.RunSql(str009);
+			string sql1="";
+			bool flag33=false,flag=false;
+			string dept_offi=this.get_dept(",院级归口部门,");
+			string dept_acc=this.get_dept(",财务部门,");
+			//申请部门负责人
+			if(this.user_role.IndexOf(",部门负责人,")!=-1)
+			{
+				sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult) values('技改项目申请',"+file_id+",'"+this.dep_name+"','部门负责人',1,'"+this.user_name+"',getdate(),'提交')";
+				flag33=true;
+			}
+			else
+			{
+				sql1="insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ) values('技改项目申请',"+file_id+",'"+this.dep_name+"','部门负责人',1)";
+			}
+			//普通归口部门
+			string depname=this.get_dept_jg(file_id.ToString());
+			string[] deptarray=depname.Split(',');
+			int count=0;
+			//普通归口部门
+			for(int k=0;k<deptarray.Length;k++)
+			{
+				if(deptarray[k]!=dept_offi&&deptarray[k]!=dept_acc)
+				{
+					if(this.dep_name==deptarray[k]&&this.user_role.IndexOf(",资产专责人,")!=-1&&flag33==true)
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('技改项目申请',"+file_id+",'"+this.dep_name+"','资产专责人',2,'"+this.user_name+"',getdate(),'提交','归口部门')";
+					}
+					else
+					{
+						sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('技改项目申请',"+file_id+",'"+deptarray[k]+"','资产专责人',2,'归口部门')";
+					}
+					count++;
+				}
+			}
+			//院级归口部门
+			if(this.dep_name==dept_offi&&this.user_role.IndexOf(",资产专责人,")!=-1&&count<=0)
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('技改项目申请',"+file_id+",'"+this.dep_name+"','资产专责人',3,'"+this.user_name+"',getdate(),'提交','院级归口部门')";
+				flag=true;
+			}
+			else
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_dep_kind) values('技改项目申请',"+file_id+",'"+dept_offi+"','资产专责人',3,'院级归口部门')";
+			}
+			//财务部门
+			if(this.dep_name== dept_acc && this.user_role.IndexOf(",部门负责人,")!=-1&&flag==true)
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level ,flow_executant , flow_executdate , flow_executresult,flow_dep_kind) values('技改项目申请',"+file_id+",'"+this.dep_name+"','部门负责人',4,'"+this.user_name+"',getdate(),'提交','财务部门')";
+			}
+			else
+			{
+				sql1+=";insert into t_flow (file_type , file_id , flow_dep_name , flow_peo_duty, flow_level,flow_dep_kind ) values('技改项目申请',"+file_id+",'"+dept_acc+"','部门负责人',4,'财务部门')";
+			}
+			this.RunSql(sql1);	
+			sql1="update asset_jg_sq set state_code=(select state_code from t_state where file_type='技改项目申请'and state='已提交') where id='"+file_id+"'";
+			this.RunSql(sql1);
+		}
+		private string get_dept(string dept_kind)
+		{
+			string sql="select dept from person_dept where dept_kind like '%"+dept_kind+"%'"; 
+			return this.GetRow(sql)[0].ToString();
+		}
+		private string get_dept_jg(string id)
+		{
+			string dep_name="";
+			string sql="select distinct t1.belong_dept from asset_kind t1,asset_jg_sq t2,asset_jg_detail t3"+
+				" where t2.id='"+id+"' and t2.id=t3.jg_id and t3.asset_kind=t1.asset_kind ";
+			DataTable dt=new DataTable();
+			dt=this.GetTable(sql);
+			if(dt.Rows.Count>0)
+			{
+				for(int i=0;i<dt.Rows.Count;i++)
+				{
+					dep_name+=dt.Rows[i]["belong_dept"].ToString()+",";
+				}
+			}
+			dep_name=dep_name.Substring(0,dep_name.Length-1);
+			return dep_name;
+		}
+        #endregion
+
+		#region RichardZ
+		/// <summary>
+		/// 根据部门类型获得部门名称
+		/// </summary>
+		/// <param name="dept_kind">
+		/// ",院级归口部门,",",财务部门,"
+		/// </param>
+		/// <returns>部门名称</returns>
+		private string GetDept(string dept_kind)
+		{
+			string sql="select dept from person_dept where dept_kind like '%"+dept_kind+"%'"; 
+			return GetRow(sql)[0].ToString();
+		}
+
+		#endregion
+      
+	}
+}

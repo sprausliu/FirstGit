@@ -1,0 +1,1347 @@
+using System;
+using System.Collections;
+using System.ComponentModel;
+using System.Data;
+using System.Data.SqlClient;
+using System.Net;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Web.UI.HtmlControls;
+using System.Web.SessionState;
+using Infragistics.WebUI.UltraWebGrid;
+using Infragistics.WebUI.WebCombo;
+namespace CRM
+{
+	/// <summary>
+	/// DB 的摘要说明。
+	/// </summary>
+	public class DB
+	{
+		#region 数据库操作
+		public SqlConnection _cn;
+		private SqlCommand _cm;
+		public SqlTransaction  _tran;
+		public SqlDataAdapter _Ada;
+		//private SqlDataReader _reader;
+		public DataSet _ds;
+		private DataTable _dt;
+		public DataRow _dr;
+
+		public SqlDataAdapter ada;
+		public DataSet ds;
+		public DataRow dr;
+		public DataTable dt;
+	
+		private enum SelDB
+		{
+			/// <summary>
+			/// 报销系统
+			/// </summary>
+			bx=1,
+			/// <summary>
+			/// 人力资源
+			/// </summary>
+			rlzy=2	
+		}
+
+		public DB()
+		{
+			//
+			// TODO: 在此处添加构造函数逻辑
+			//
+		
+		}
+		/// <summary>
+		/// 打开数据库连接
+		/// </summary>
+		private void open()
+		{
+			if(_cn==null||_cn.State==System.Data.ConnectionState.Closed)
+			{
+				_cn = new SqlConnection(System.Configuration.ConfigurationSettings.AppSettings["data"]);
+				_cn.Open();
+			}
+		}
+		public void Close()
+		{
+			if(_cn!=null)
+			{
+				_cn.Close();
+			}
+		}
+		/// <summary>
+		/// 改变数据库链接：“1：CRM”,“2：GSMSDB”
+		/// </summary>
+		/// <param name="i"></param>
+		public void ChangDB(int i)
+		{
+			if(_cn!=null)
+			{
+				if(_cn.State!=ConnectionState.Closed)
+				{
+					_cn.Close();
+				}
+			}
+			string db_name = null;
+			switch(i)
+			{
+				case 1:
+					db_name = "data";
+					break;
+				case 2:
+					db_name = "data_gsmsdb";
+					break;
+			}
+			_cn = new SqlConnection(System.Configuration.ConfigurationSettings.AppSettings[db_name]);
+			_cn.Open();
+		}
+		public void ChangDB(string ConnContent)
+		{
+			if(_cn!=null)
+			{
+				if(_cn.State!=ConnectionState.Closed)
+				{
+					_cn.Close();
+				}
+			}
+//			string db_name = null;
+//			switch(i)
+//			{
+//				case 1:
+//					db_name = "data";
+//					break;
+//				case 2:
+//					db_name = "data_gsmsdb";
+//					break;
+//			}
+			_cn = new SqlConnection(ConnContent);
+			_cn.Open();
+		}
+		public SqlCommand RunSqlTran()
+		{
+			open();
+			_cm= new SqlCommand();
+			_tran = _cn.BeginTransaction();
+			_cm.Connection = _cn;
+			_cm.Transaction = _tran;
+			return _cm;
+		}
+		
+		/// <summary>
+		/// 执行一个Sql语句返回一个DataSet对象
+		/// </summary>
+		/// <param name="str_Sql">sql语句</param>
+		/// <returns>DataSet对象</returns>
+		public DataSet GetDs(string str_sql)
+		{
+			open();
+			_Ada = new SqlDataAdapter(str_sql,_cn);
+			_ds = new DataSet();
+			try
+			{
+				_Ada.Fill(_ds);
+				_cn.Close();
+				return _ds;
+			}
+			catch
+			{
+				throw;
+			}
+
+		}
+		
+		/// <summary>
+		/// 根据sql语句返回datatable对象
+		/// </summary>
+		/// <param name="str_sql">sql语句</param>
+		/// <returns>datatable对象</returns>
+		public DataTable GetTable(string str_sql)
+		{
+			try
+			{
+				_dt = GetDs(str_sql).Tables[0];
+				return _dt;
+			}
+			catch
+			{
+				throw;
+			}
+		}
+		/// <summary>
+		/// 取得记录数
+		/// </summary>
+		/// <param name="str_sql"></param>
+		/// <returns>int 型</returns>
+		public int GetRowCount(string str_sql)
+		{
+			int RowCount = GetTable(str_sql).Rows.Count;
+			_dt.Dispose();
+			return RowCount;
+		}
+		/// <summary>
+		/// 取得记录数
+		/// </summary>
+		/// <param name="table_name">查询数据表名</param>
+		/// <param name="if_where">查询条件如id＝5</param>
+		/// <returns></returns>
+		public int GetRowCount(string table_name,string if_where)
+		{
+			int intCount;
+			open();
+			SqlCommand cmd=new SqlCommand("select count(*) from "+table_name+" where "+if_where,_cn);
+			intCount=(int)cmd.ExecuteScalar();
+			_cn.Close();
+			return intCount;
+		}
+		/// <summary>
+		/// 通过传Sql语句关键key值获得表中一行的数据
+		/// </summary>
+		/// <param name="str_sql"></param>
+		/// <returns></returns>
+		public DataRow GetRow(string str_sql)
+		{
+				_dr = GetTable(str_sql).Rows[0];
+				return _dr;
+		}
+		public int GetMaxID(string id,string str_table)
+		{
+			int maxid;
+			open();
+			string t_sql = "select max("+id+") from "+str_table;
+			_cm = new SqlCommand(t_sql,_cn);
+			if(_cm.ExecuteScalar().ToString()=="")
+			{
+				maxid = 0;
+			}
+			else
+			{
+				maxid =Convert.ToInt32(_cm.ExecuteScalar());
+			}
+			return maxid;
+		}
+		public int GetMaxID(string id,string str_table,string condition)
+		{
+			int maxid;
+			open();
+			string t_sql = "select max("+id+") from "+str_table+condition;
+			_cm = new SqlCommand(t_sql,_cn);
+			if(_cm.ExecuteScalar().ToString()=="")
+			{
+				maxid = 0;
+			}
+			else
+			{
+				maxid =Convert.ToInt32(_cm.ExecuteScalar());
+			}
+			return maxid;
+		}
+		public int GetMaxID(string id,string str_table,SqlCommand cmd)
+		{
+			int maxid;
+			open();
+			string t_sql = "select max("+id+") from "+str_table;
+			cmd.CommandText = t_sql;
+			if(cmd.ExecuteScalar().ToString()=="")
+			{
+				maxid = 0;
+			}
+			else
+			{
+				maxid =Convert.ToInt32(cmd.ExecuteScalar());
+			}
+			return maxid;
+		}
+		/// <summary>
+		/// 执行sql语句，无返回值
+		/// </summary>
+		/// <param name="Sql"></param>
+		public void RunSql(string Sql) 
+		{
+			SqlCommand cmd = CreateCommand(Sql);
+			cmd.ExecuteNonQuery();
+			this.Close();
+		}
+		
+		/// <summary>
+		/// 执行sql语句，返回执行结果第一行第一列的值
+		/// </summary>
+		/// <param name="Sql"></param>
+		/// <param name="val">返回值</param>
+		public void RunSql(string Sql,out string val) 
+		{
+			SqlCommand cmd = CreateCommand(Sql);
+			val=Convert.ToString(cmd.ExecuteScalar());
+			_cn.Close();
+		}
+		/// <summary>
+		/// 执行sql语句，返回DataReader
+		/// </summary>
+		/// <param name="Sql"></param>
+		/// <param name="dataReader"></param>
+
+		public void RunSql(string Sql, out SqlDataReader dataReader) 
+		{
+			SqlCommand cmd = CreateCommand(Sql);
+			dataReader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+		}
+		/// <summary>
+		/// 执行sql语句，返回DataSet
+		/// </summary>
+		/// <param name="Sql"></param>
+		/// <param name="ds"></param>
+		public void RunSql(string Sql, out DataSet ds) 
+		{
+			open();
+			
+			SqlDataAdapter ada=new SqlDataAdapter(Sql,_cn);
+			ds=new DataSet();
+			ada.Fill(ds);
+			_cn.Close();
+		}
+		public void RunSql(string Sql,WFNetCtrl.AspNetPager AspNetPager1,out DataSet ds)
+		{
+			open();
+			
+			SqlDataAdapter ada=new SqlDataAdapter(Sql,_cn);
+			ds=new DataSet();
+			if(AspNetPager1.CurrentPageIndex>0)
+			{
+				ada.Fill(ds,AspNetPager1.PageSize*(AspNetPager1.CurrentPageIndex-1),AspNetPager1.PageSize,"pagetable");
+
+			}
+			else
+			{
+				ada.Fill(ds,0,AspNetPager1.PageSize,"pagetable");
+			}
+		}
+		/// <summary>
+		/// 建立SqlCommand，无参数
+		/// </summary>
+		/// <param name="Sql"></param>
+		/// <returns></returns>
+		private SqlCommand CreateCommand(string Sql) 
+		{
+			open();
+			SqlCommand cmd = new SqlCommand(Sql, _cn);
+			return cmd;
+		}
+		/// <summary>
+		/// 建立SqlCommand，带参数
+		/// </summary>
+		/// <param name="Sql"></param>
+		/// <param name="prams"></param>
+		/// <returns></returns>
+		private SqlCommand CreateCommand(string Sql, SqlParameter[] prams) 
+		{
+			open();
+
+			SqlCommand cmd = new SqlCommand(Sql, _cn);
+			cmd.CommandType = CommandType.StoredProcedure;
+
+			if (prams != null) 
+			{
+				foreach (SqlParameter parameter in prams)
+					cmd.Parameters.Add(parameter);
+			}
+
+			cmd.Parameters.Add(
+				new SqlParameter("ReturnValue", SqlDbType.Int, 4,
+				ParameterDirection.ReturnValue, false, 0, 0,
+				string.Empty, DataRowVersion.Default, null));
+
+			return cmd;
+		}
+		/// <summary>
+		/// Make input param.
+		/// </summary>
+		/// <param name="ParamName">Name of param.</param>
+		/// <param name="DbType">Param type.</param>
+		/// <param name="Size">Param size.</param>
+		/// <param name="Value">Param value.</param>
+		/// <returns>New parameter.</returns>
+		public SqlParameter MakeInParam(string ParamName, SqlDbType DbType, int Size, object Value) 
+		{
+			return MakeParam(ParamName, DbType, Size, ParameterDirection.Input, Value);
+		}		
+
+		/// <summary>
+		/// Make input param.
+		/// </summary>
+		/// <param name="ParamName">Name of param.</param>
+		/// <param name="DbType">Param type.</param>
+		/// <param name="Size">Param size.</param>
+		/// <returns>New parameter.</returns>
+		public SqlParameter MakeOutParam(string ParamName, SqlDbType DbType, int Size) 
+		{
+			return MakeParam(ParamName, DbType, Size, ParameterDirection.Output, null);
+		}		
+
+		/// <summary>
+		/// Make stored procedure param.
+		/// </summary>
+		/// <param name="ParamName">Name of param.</param>
+		/// <param name="DbType">Param type.</param>
+		/// <param name="Size">Param size.</param>
+		/// <param name="Direction">Parm direction.</param>
+		/// <param name="Value">Param value.</param>
+		/// <returns>New parameter.</returns>
+		public SqlParameter MakeParam(string ParamName, SqlDbType DbType, Int32 Size, ParameterDirection Direction, object Value) 
+		{
+			SqlParameter param;
+
+			if(Size > 0)
+				param = new SqlParameter(ParamName, DbType, Size);
+			else
+				param = new SqlParameter(ParamName, DbType);
+
+			param.Direction = Direction;
+			if (!(Direction == ParameterDirection.Output && Value == null))
+			{
+				if(Value.ToString().Trim()=="")
+				{
+					param.Value = DBNull.Value;
+				}
+				else
+				{
+					param.Value = Value;
+				}
+			}
+			return param;
+		}
+		#region 存储过程运行类
+		/// <summary>
+		/// Run stored procedure.
+		/// </summary>
+		/// <param name="procName">Name of stored procedure.</param>
+		/// <returns>Stored procedure return value.</returns>
+		public void RunProc(string procName) 
+		{
+			SqlCommand cmd = CreateCommand(procName, null);
+			cmd.ExecuteNonQuery();
+			this.Close();
+		}
+
+		/// <summary>
+		/// Run stored procedure.
+		/// </summary>
+		/// <param name="procName">Name of stored procedure.</param>
+		/// <param name="prams">Stored procedure params.</param>
+		/// <returns>Stored procedure return value.</returns>
+		public void RunProc(string procName, SqlParameter[] prams) 
+		{
+			SqlCommand cmd = CreateCommand(procName, prams);
+			cmd.ExecuteNonQuery();
+			this.Close();
+			//return (int)cmd.Parameters["ReturnValue"].Value;
+		}
+
+		/// <summary>
+		/// Run stored procedure.
+		/// </summary>
+		/// <param name="procName">Name of stored procedure.</param>
+		/// <param name="dataReader">Return result of procedure.</param>
+		public void RunProc(string procName, out SqlDataReader dataReader) 
+		{
+			SqlCommand cmd = CreateCommand(procName, null);
+			dataReader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+		}
+
+		public void RunProc(string procName, out DataSet dataSet) 
+		{
+			SqlCommand cmd = CreateCommand(procName, null);
+			SqlDataAdapter ada = new SqlDataAdapter(cmd);
+			System.Data.DataSet ds=new DataSet();
+			ada.Fill(ds);
+			dataSet = ds;
+			ds.Dispose();
+		}
+		public void RunProc(string procName,WFNetCtrl.AspNetPager AspNetPager1, out DataSet ds,out int rsCount) 
+		{
+			SqlCommand cmd = CreateCommand(procName, null);
+			SqlDataAdapter ada = new SqlDataAdapter(cmd);
+			DataSet ds1=new DataSet();
+			ada.Fill(ds1);
+			rsCount=ds1.Tables[0].Rows.Count;
+			ds1.Clear();
+			ds1.Dispose();
+			
+			ds=new DataSet();
+			if(AspNetPager1.CurrentPageIndex>0)
+			{
+				ada.Fill(ds,AspNetPager1.PageSize*(AspNetPager1.CurrentPageIndex-1),AspNetPager1.PageSize,"pagetable");
+
+			}
+			else
+			{
+				ada.Fill(ds,0,AspNetPager1.PageSize,"pagetable");
+			}
+		}
+		public void RunProc(string procName, SqlParameter[] prams, out DataSet dataSet) 
+		{
+			SqlCommand cmd = CreateCommand(procName, prams);
+			SqlDataAdapter ada = new SqlDataAdapter(cmd);
+			System.Data.DataSet ds=new DataSet();
+			ada.Fill(ds);
+			dataSet = ds;
+			//ds.Dispose();
+		}
+
+		/// <summary>
+		/// Run stored procedure.
+		/// </summary>
+		/// <param name="procName">Name of stored procedure.</param>
+		/// <param name="prams">Stored procedure params.</param>
+		/// <param name="dataReader">Return result of procedure.</param>
+		public void RunProc(string procName, SqlParameter[] prams, out SqlDataReader dataReader) 
+		{
+			SqlCommand cmd = CreateCommand(procName, prams);
+			dataReader = cmd.ExecuteReader(System.Data.CommandBehavior.CloseConnection);
+		}
+		#endregion
+		/// <summary>
+		/// 获取本机真实IP
+		/// </summary>
+		/// <returns></returns>
+		public static string getIPAddress ( ) 
+		{
+			IPAddress c_ip;
+			c_ip = new IPAddress(Dns.GetHostByName(Dns.GetHostName()).AddressList[0].Address);
+			return c_ip.ToString();
+			
+		}
+		public void SelectItem(DropDownList ddl,string val)
+		{
+			foreach(ListItem ite in ddl.Items)
+			{
+				if(ite.Text.Trim()==val.Trim())
+				{
+					ite.Selected = true;
+					break;
+				}
+			}
+		}
+		public void SelectRad(RadioButtonList rad,string val)
+		{
+			foreach(ListItem ite in rad.Items)
+			{
+				if(ite.Text.Trim()==val.Trim())
+				{
+					ite.Selected = true;
+					break;
+				}
+			}
+		}
+		/// <summary>
+		/// 通过SqlCommandBuilder对象增加数据库记录
+		/// </summary>
+		/// <param name="str_Sql">Select-SQL语句</param>
+		public void Builder(string str_Sql)
+		{	
+			open();
+			_Ada = new SqlDataAdapter(str_Sql,_cn);
+			SqlCommandBuilder myCommandBuilder = new SqlCommandBuilder(_Ada);
+			_ds = new DataSet();
+			_Ada.Fill(_ds);
+			_dr = _ds.Tables[0].NewRow();
+		}
+		/// <summary>
+		/// 关闭数据库的添加操作
+		/// </summary>
+		public void BuilderClose()
+		{
+			_ds.Tables[0].Rows.Add(_dr);
+			_Ada.Update(_ds);
+			_cn.Close();
+			_ds.Clear();
+		}
+		/// <summary>
+		/// 数据库的更新操作
+		/// </summary>
+		/// <param name="str_Sql">Select-SQL语句</param>
+		public void BuilderEdit(string str_Sql)
+		{
+			open();
+			_Ada = new SqlDataAdapter(str_Sql,_cn);
+			SqlCommandBuilder myCommandBuilder = new SqlCommandBuilder(_Ada);
+			_ds = new DataSet();
+			_Ada.Fill(_ds);
+			_dr = _ds.Tables[0].Rows[0];
+		}
+		/// <summary>
+		/// 关闭数据库的更新操作
+		/// </summary>
+		public void BuilderEditClose()
+		{
+			_Ada.Update(_ds);
+			_cn.Close();
+			_ds.Clear();
+		}
+
+		#endregion
+    
+		#region 绑定控件篇 
+
+		#region DropDownList控件
+		/// 根据内容选定下拉框
+		/// </summary>
+		/// <param name="str1"></param>
+		/// <param name="dr"></param>
+		/// <param name="comp_flag"></param>
+		public void sel_drp(string str1,DropDownList dr,string comp_flag)
+		{
+			for(int f=0;f<dr.Items.Count;f++)
+			{
+				dr.Items[f].Selected=false;
+			}
+			for(int ff=0;ff<dr.Items.Count;ff++)
+			{
+				if(str1==dr.Items[ff].Text && comp_flag=="text")
+				{
+					dr.Items[ff].Selected=true;
+				}
+				else if(str1==dr.Items[ff].Value.ToString() && comp_flag=="value")
+				{
+					dr.Items[ff].Selected=true;
+				}
+			}
+
+		}
+		
+		/// <summary>
+		/// 绑定DropDownList控件,DropDownList控件Value,Text值将等于strText值
+		/// </summary>
+		/// <param name="strText">绑定DropDownList控件Value,Text值相对应数据库表字段名</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void BindDropDownList(string strText,string strSql,DropDownList ddl)
+		{
+			ddl.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			ddl.DataValueField =strText;
+			ddl.DataTextField=strText;
+			ddl.DataBind();
+		}
+		
+		/// <summary>
+		/// 绑定DropDownList控件并显示数据,DropDownList控件Value,Text值将分别等于等于strValue,strText值
+		/// </summary>
+		/// <param name="strValue">绑定DropDownList控件Value值相对应数据库表字段名</param>
+		/// <param name="strText">绑定DropDownList控件Text值相对应数据库表字段名</param>
+		/// <param name="sql">sql</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void BindDropDownList(string strValue,string strText,string strSql,DropDownList ddl)
+		{
+			ddl.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			ddl.DataValueField =strValue;
+			ddl.DataTextField=strText;
+			ddl.DataBind();
+		}
+		/// <summary>
+		///  通过传递参数获得已经绑定DropDownList控件Value选中值
+		/// </summary>
+		/// <param name="strValueField">参数</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void SelectDropDownListValue(string strValueField,DropDownList ddl)
+		{
+			//ddl.Items[0].Selected=false;
+			if(ddl.SelectedItem!=null)
+				ddl.Items[ddl.SelectedIndex].Selected=false;
+			for (int i=0;i<ddl.Items.Count;i++) 
+			{
+				if (strValueField==ddl.Items[i].Value)
+				{
+					ddl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+		/// <summary>
+		///  通过传递参数获得已经绑定DropDownList控件Text选中值
+		/// </summary>
+		/// <param name="strValueField">参数</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void SelectDropDownListText(string strTextField,DropDownList ddl)
+		{
+			//ddl.Items[0].Selected=false;
+			if(ddl.SelectedItem!=null)
+				ddl.Items[ddl.SelectedIndex].Selected=false;
+			for (int i=0;i<ddl.Items.Count;i++) 
+			{
+				if (strTextField==ddl.Items[i].Text)
+				{
+					ddl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+		/// <summary>
+		/// 绑定DropDownList控件并取得Value选中值
+		/// </summary>
+		/// <param name="strValue">数据库表示Value值字段</param>
+		/// <param name="strText">数据库表示Text值字段</param>
+		/// <param name="strValueField">参数</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void SelectBindDropDownListValue(string strValue,string strText,string strValueField,string strSql,DropDownList ddl)
+		{
+			BindDropDownList(strValue,strText,strSql,ddl);// 绑定ddl控件
+			ddl.Items[0].Selected=false;
+			for (int i=0;i<ddl.Items.Count;i++) 
+			{
+				if (strValueField==ddl.Items[i].Value)
+				{
+					ddl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}/// <summary>
+		/// 绑定DropDownList控件并取得Text选中值
+		/// </summary>
+		/// <param name="strValue">数据库表示Value值字段</param>
+		/// <param name="strText">数据库表示Text值字段</param>
+		/// <param name="strValueField">参数</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void SelectBindDropDownListText(string strValue,string strText,string strTextField,string strSql,DropDownList ddl)
+		{
+			BindDropDownList(strValue,strText,strSql,ddl);// 绑定ddl控件
+			ddl.Items[0].Selected=false;
+			for (int i=0;i<ddl.Items.Count;i++) 
+			{
+				if (strTextField==ddl.Items[i].Text)
+				{
+					ddl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}	
+		
+
+		#endregion
+
+		#region ListBox控件
+		
+		/// <summary>
+		/// 通过Sql语句绑定ListBox控件,ListBox控件Value,Text值将等于strText值
+		/// </summary>
+		/// <param name="strText">绑定ListBox控件Value,Text值相对应数据库表字段名</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void BindListBox(string strText,string strSql,ListBox ltb)
+		{
+			ltb.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			ltb.DataValueField =strText;
+			ltb.DataTextField=strText;
+			ltb.DataBind();
+			_ds.Clear();
+		}
+		/// <summary>
+		/// 通过Sql语句绑定ListBox控件并显示数据,ListBox控件Value,Text值将分别等于等于strValue,strText值
+		/// </summary>
+		/// <param name="strValue">绑定ListBox控件Value值相对应数据库表字段名</param>
+		/// <param name="strText">绑定ListBox控件Text值相对应数据库表字段名</param>
+		/// <param name="sql">sql</param>
+		/// <param name="ddl">ListBox控件id</param>
+		public void BindListBox(string strValue,string strText,string strSql,ListBox ltb)
+		{
+			ltb.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			ltb.DataValueField =strValue;
+			ltb.DataTextField=strText;
+			ltb.DataBind();
+			_ds.Clear();
+		}
+		/// <summary>
+		/// 绑定ListBox控件并取得Value选中值
+		/// </summary>
+		/// <param name="strValue">数据库表示Value值字段</param>
+		/// <param name="strText">数据库表示Text值字段</param>
+		/// <param name="strValueField">参数</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">ListBox控件id</param>
+		public void SelectBindListBoxValue(string strValue,string strText,string strValueField,string strSql,ListBox ltb)
+		{
+			BindListBox(strValue,strText,strSql,ltb);
+			for (int i=0;i<ltb.Items.Count;i++) 
+			{
+				if (strValueField.IndexOf(ltb.Items[i].Value)!=-1)
+				{
+					ltb.Items[i].Selected=true;
+				}
+			}
+		}
+		/// <summary>
+		/// 绑定ListBox控件并取得Text选中值
+		/// </summary>
+		/// <param name="strValue">数据库表示Value值字段</param>
+		/// <param name="strText">数据库表示Text值字段</param>
+		/// <param name="strValueField">参数</param>
+		/// <param name="strSql">sql</param>
+		/// <param name="ddl">ListBox控件id</param>
+		public void SelectBindListBoxText(string strText,string strTextField,string strSql,ListBox ltb)
+		{
+			BindListBox(strText,strSql,ltb);
+			for (int i=0;i<ltb.Items.Count;i++) 
+			{
+				if (strTextField.IndexOf(ltb.Items[i].Text)!=-1)
+				{
+					ltb.Items[i].Selected=true;
+				}
+			}
+		}
+		public string GetListBoxValue(ListBox ltb)
+		{
+			string str_Value="";
+			for (int i=0;i<ltb.Items.Count;i++) 
+			{
+				if (ltb.Items[i].Selected==true)
+				{
+					str_Value=str_Value+ltb.Items[i].Value+",";
+				}
+			}
+			if (str_Value!="")
+			{
+				str_Value=str_Value.Substring(0,str_Value.Length-1);
+			}
+			return str_Value;
+		}
+
+
+		//---------------------------------CheckBoxList控件-------------------------------
+		/// <summary>
+		/// 绑定CheckBoxList控件并显示数据,CheckBoxList控件Value,Text值将等于strText值
+		/// </summary>
+		/// <param name="strText">绑定CheckBoxList控件Value,Text值相对应数据库表字段名</param>
+		/// <param name="sql">sql</param>
+		/// <param name="ckb">CheckBoxList控件id</param>
+		public void BindCheckBoxList(string strText,string strSql,CheckBoxList ckb)
+		{
+			ckb.DataSource=GetDs(strSql);
+			ckb.DataValueField =strText;
+			ckb.DataTextField=strText;
+			ckb.DataBind();
+		}
+		/// <summary>
+		/// 绑定CheckBoxList控件并显示数据,CheckBoxList控件Value,Text值将分别等于等于strValue,strText值
+		/// </summary>
+		/// <param name="strValue">绑定CheckBoxList控件Value值相对应数据库表字段名</param>
+		/// <param name="strText">绑定CheckBoxList控件Text值相对应数据库表字段名</param>
+		/// <param name="sql">sql</param>
+		/// <param name="ckb">CheckBoxList控件id</param>
+		public void BindCheckBoxList(string strValue,string strText,string strSql,CheckBoxList ckb)
+		{
+			ckb.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			ckb.DataValueField =strValue;
+			ckb.DataTextField=strText;
+			ckb.DataBind();
+		}
+		public void SelectBindCheckBoxListValue(string strValue,string strText,string strValue_Field,string strSql,CheckBoxList ckb)
+		{
+			BindCheckBoxList(strValue,strText,strSql,ckb);
+			for (int i=0;i<ckb.Items.Count;i++) 
+			{
+				if (strValue_Field.IndexOf(ckb.Items[i].Value)!=-1)
+				{
+					ckb.Items[i].Selected=true;
+				}
+			}
+		}
+		public void SelectBindCheckBoxListText(string strValue,string strText,string strText_Field,string strSql,CheckBoxList ckb)
+		{
+			BindCheckBoxList(strValue,strText,strSql,ckb);// 绑定ckb控件
+			for (int i=0;i<ckb.Items.Count;i++) 
+			{
+				if (strText_Field.IndexOf(ckb.Items[i].Value)!=-1)
+				{
+					ckb.Items[i].Selected=true;
+				}
+			}
+		}
+		#endregion
+
+		#region RadioButtonList控件
+		
+
+
+		/// <summary>
+		/// 绑定RadioButtonList控件并显示数据,RadioButtonList控件Value,Text值将等于strText值
+		/// </summary>
+		/// <param name="strText">绑定RadioButtonList控件Value,Text值相对应数据库表字段名</param>
+		/// <param name="sql">Select-SQL语句</param>
+		/// <param name="rbl">RadioButtonList控件id值</param>
+		public void BindradioButtonList(string strText,string strSql,RadioButtonList rbl)
+		{
+			rbl.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			rbl.DataValueField =strText;
+			rbl.DataTextField=strText;
+			rbl.DataBind();
+		}
+		/// <summary>
+		/// 绑定RadioButtonList控件并显示数据,RadioButtonList控件Value,Text值将分别等于等于strValue,strText值
+		/// </summary>
+		/// <param name="strValue">绑定RadioButtonList控件Value值相对应数据库表字段名</param>
+		/// <param name="strText">绑定RadioButtonList控件Text值相对应数据库表字段名</param>
+		/// <param name="sql">Select-SQL语句</param>
+		/// <param name="rbl">RadioButtonList控件id值</param>
+		public void BindradioButtonList(string strValue,string strText,string strSql,RadioButtonList rbl)
+		{
+			rbl.DataSource=GetDs(strSql).Tables[0].DefaultView;
+			rbl.DataValueField =strValue;
+			rbl.DataTextField=strText;
+			rbl.DataBind();
+		}
+		/// <summary>
+		///  通过传递参数获得已经绑定DropDownList控件Value选中值
+		/// </summary>
+		/// <param name="strValueField">参数</param>
+		/// <param name="ddl">DropDownList控件id</param>
+		public void SelectRadioButtonListValue(string strValueField,RadioButtonList rbl)
+		{
+			rbl.Items[0].Selected=false;
+			for (int i=0;i<rbl.Items.Count;i++) 
+			{
+				if (strValueField==rbl.Items[i].Value)
+				{
+					rbl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+		public void SelectRadioButtonListText(string strTextField,RadioButtonList rbl)
+		{
+			rbl.Items[0].Selected=false;
+			for (int i=0;i<rbl.Items.Count;i++) 
+			{
+				if (strTextField==rbl.Items[i].Text)
+				{
+					rbl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+
+		public void SelectRadioButtonList(string strValue,string strText,string str_Field,string strSql,RadioButtonList rbl)
+		{
+			BindradioButtonList(strValue,strText,strSql,rbl);
+			
+			for (int i=0;i<rbl.Items.Count;i++) 
+			{
+				rbl.Items[i].Selected=false;
+				if (str_Field==rbl.Items[i].Value)
+				{
+					rbl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+		public void SelectRadioButtonList(string strText,string str_Field,string strSql,RadioButtonList rbl)
+		{
+			BindradioButtonList(strText,strSql,rbl);
+			
+			for (int i=0;i<rbl.Items.Count;i++) 
+			{
+				rbl.Items[i].Selected=false;
+				if (str_Field==rbl.Items[i].Text)
+				{
+					rbl.Items[i].Selected=true;
+					break;
+				}
+			}
+		}
+		#endregion
+
+		#region UltraWebGrid控件
+		/// <summary>
+		/// 通过sql语句将UltraWebGrid的某一列绑定为下拉列表。
+		/// </summary>
+		/// <param name="uwg">UltraWebGrid控件id</param>
+		/// <param name="col_num">下拉列表列的列号</param>
+		/// <param name="sql">sql语句</param>
+		/// <param name="val_field">下拉列表的value值</param>
+		/// <param name="txt_field">下拉列表的text值</param>
+		public void BindValueList(UltraWebGrid uwg,int col_num,string sql,string val_field,string txt_field)
+		{
+			uwg.Columns[col_num].Type = ColumnType.DropDownList;
+			ValueList vlt = uwg.Columns[col_num].ValueList;
+			vlt.DataSource = this.GetTable(sql).DefaultView;
+			vlt.ValueMember = val_field;
+			vlt.DisplayMember = txt_field;
+			vlt.DataBind();
+		
+		}
+		public void BindCombo(WebCombo cbo,string sql,string val_field,string txt_field)
+		{
+			cbo.DataSource = GetTable(sql).DefaultView;
+		
+			cbo.DataValueField = val_field;
+			cbo.DataTextField = txt_field;
+			cbo.DataBind();
+			
+		}
+		public void BindCombo(WFNetCtrl.ComboBox cbo,string sql,string val_field,string txt_field)
+		{
+			cbo.DataSource = GetTable(sql).DefaultView;
+		
+			cbo.DataValueField = val_field;
+			cbo.DataTextField = txt_field;
+			cbo.DataBind();
+		}
+		public void BindComboWithGrid(UltraWebGrid uwg,int col_num,WebCombo cbo,string sql,string val_field,string txt_field)
+		{
+			BindCombo(cbo,sql,val_field,txt_field);
+			uwg.Columns[col_num].AllowUpdate = AllowUpdate.Yes;
+
+			uwg.Columns[col_num].Type=ColumnType.Custom;
+			uwg.Columns[col_num].ValueList.WebCombo = cbo;
+
+		}
+		/// <summary>
+		/// 获得webgrid单元格里的内容.
+		/// </summary>
+		/// <param name="row"></param>
+		/// <param name="Key"></param>
+		/// <returns></returns>
+		public UltraGridCell Get_Cel(UltraGridRow row,string Key)
+		{
+			return row.Cells.FromKey(Key);
+		}
+		/// <summary>
+		/// 绑定UltraWebGrid
+		/// </summary>
+		/// <param name="uwg"></param>
+		/// <param name="sql"></param>
+		public void BindUwg(UltraWebGrid uwg,string sql)
+		{
+			uwg.DataSource = this.GetTable(sql).DefaultView;
+			uwg.DataBind();
+		}
+		
+		#endregion
+		#region 通用绑定控件篇
+		/// <summary>
+		/// 绑定DataGrid,Repeat,DataList控件并分页
+		/// </summary>
+		/// <param name="procName">存储过程名称</param>
+		/// <param name="prams">给存储过程传递传输SqlParameter对象</param>
+		/// <param name="ctl_Listctl">DataGrid,Repeat,DataList控件id</param>
+		/// <param name="AspNetPager1">分页控件id值</param>
+		public void BindCtrl(string procName,SqlParameter[] prams,Control ctl_Listctl)
+		{
+			//SqlDataReader dr;
+			RunProc(procName,prams,out ds);
+			if (ctl_Listctl is Repeater)
+			{
+				((Repeater)ctl_Listctl).DataSource=ds.Tables[0].DefaultView;
+				((Repeater)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataList)
+			{
+				((DataList)ctl_Listctl).DataSource=ds.Tables[0].DefaultView;
+				((DataList)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataGrid)
+			{
+				((DataGrid)ctl_Listctl).DataSource=ds.Tables[0].DefaultView;
+				((DataGrid)ctl_Listctl).DataBind();
+			}
+			ds.Clear();
+		}
+		/// <summary>
+		/// 绑定DataGrid,Repeat,DataList,UltraWebGrid控件
+		/// </summary>
+		/// <param name="Sql">sql语句</param>
+		/// <param name="ctl_Listctl">DataGrid,Repeat,DataList,UltraWebGrid控件id</param>
+		public void BindCtrl(string Sql,Control ctl_Listctl)
+		{
+			SqlDataReader dr;
+			RunSql(Sql,out dr);
+			
+			if (ctl_Listctl is Repeater)
+			{
+				((Repeater)ctl_Listctl).DataSource=dr;
+				((Repeater)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataList)
+			{
+				((DataList)ctl_Listctl).DataSource=dr;
+				((DataList)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataGrid)
+			{
+				((DataGrid)ctl_Listctl).DataSource=dr;
+				((DataGrid)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is UltraWebGrid)
+			{
+				((UltraWebGrid)ctl_Listctl).DataSource=dr;
+				((UltraWebGrid)ctl_Listctl).DataBind();
+			}
+			dr.Close();
+			//AspNetPager1.CustomInfoText="当前页/总页数:"+AspNetPager1.CurrentPageIndex+"/"+AspNetPager1.PageCount+",每页记录:"+AspNetPager1.PageSize;
+		}
+
+
+		/// <summary>
+		/// 绑定DataGrid,Repeat,DataList,UltraWebGrid控件并分页
+		/// </summary>
+		/// <param name="str_Sql">sql语句</param>
+		/// <param name="ctl_Listctl">DataGrid,Repeat,DataList,UltraWebGrid控件id</param>
+		/// <param name="AspNetPager1">分页控件id</param>
+		public void BindCtrl(string str_Sql,Control ctl_Listctl,WFNetCtrl.AspNetPager AspNetPager1)
+		{
+			open();
+			//给分页控件的总记录数属性赋值
+			GetTable(str_Sql);
+			AspNetPager1.RecordCount=_dt.Rows.Count;
+			//绑定数据
+			SqlCommand cmd=new SqlCommand(str_Sql,_cn);
+			SqlDataAdapter adapter=new SqlDataAdapter(cmd);
+			DataSet ds=new DataSet();
+			if(AspNetPager1.CurrentPageIndex>0)
+			{
+				adapter.Fill(ds,AspNetPager1.PageSize*(AspNetPager1.CurrentPageIndex-1),AspNetPager1.PageSize,"pagetable");
+
+			}
+			else
+			{
+				adapter.Fill(ds,0,AspNetPager1.PageSize,"pagetable");
+			}
+//			rpt.DataSource=ds.Tables["pagetable"];
+//			rpt.DataBind();
+			if (ctl_Listctl is Repeater)
+			{
+				((Repeater)ctl_Listctl).DataSource=ds.Tables["pagetable"];
+				((Repeater)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataList)
+			{
+				((DataList)ctl_Listctl).DataSource=ds.Tables["pagetable"];
+				((DataList)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataGrid)
+			{
+				((DataGrid)ctl_Listctl).DataSource=ds.Tables["pagetable"];
+				((DataGrid)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is UltraWebGrid)
+			{
+				((UltraWebGrid)ctl_Listctl).DataSource=ds.Tables["pagetable"];
+				((UltraWebGrid)ctl_Listctl).DataBind();
+			}
+			ds.Clear();
+			ds.Dispose();
+			AspNetPager1.CustomInfoText=" 当前页/总页数：["+AspNetPager1.CurrentPageIndex+"]/["+AspNetPager1.PageCount+"]&nbsp;总记录数：["+AspNetPager1.RecordCount+"]";
+		}
+
+		/// <summary>
+		/// 绑定DropDownList，CheckBoxList，RadioButtonList，ListBox控件
+		/// </summary>
+		/// <param name="Sql">存储过程名称</param>
+		/// <param name="prams">给存储过程传递传输SqlParameter对象</param>
+		/// <param name="id">数据库字段,Value值</param>
+		/// <param name="name">数据库字段,Text值</param>
+		/// <param name="listctrl">DropDownList，CheckBoxList，RadioButtonList，ListBox控件id值</param>
+		public void BindCtrl(string Sql,string id,string name,Control listctrl)
+		{
+			SqlDataReader dr;
+			RunSql(Sql,out dr);
+			//＝＝＝DropDownList＝＝＝
+			if (listctrl is DropDownList)
+			{
+				((DropDownList)listctrl).DataValueField=id;
+				((DropDownList)listctrl).DataTextField=name;
+				((DropDownList)listctrl).DataSource=dr;
+				((DropDownList)listctrl).DataBind();
+			}
+			//＝＝＝CheckBoxList＝＝＝
+			if (listctrl is CheckBoxList)
+			{
+				((CheckBoxList)listctrl).DataValueField=id;
+				((CheckBoxList)listctrl).DataTextField=name;
+				((CheckBoxList)listctrl).DataSource=dr;
+				((CheckBoxList)listctrl).DataBind();
+			}
+			//＝＝＝RadioButtonList＝＝＝
+			if (listctrl is RadioButtonList)
+			{
+				((RadioButtonList)listctrl).DataValueField=id;
+				((RadioButtonList)listctrl).DataTextField=name;
+				((RadioButtonList)listctrl).DataSource=dr;
+				((RadioButtonList)listctrl).DataBind();
+			}
+			//＝＝＝ListBox＝＝＝
+			if (listctrl is ListBox)
+			{
+				((ListBox)listctrl).DataValueField=id;
+				((ListBox)listctrl).DataTextField=name;
+				((ListBox)listctrl).DataSource=dr;
+				((ListBox)listctrl).DataBind();
+			}
+			this.Close();
+		}
+		/// <summary>
+		/// 绑定DataGrid,Repeat,DataList,UltraWebGrid控件
+		/// </summary>
+		/// <param name="Sql">sql语句</param>
+		/// <param name="ctl_Listctl">DataGrid,Repeat,DataList,UltraWebGrid控件id</param>
+		public void BindCtrl(Control ctl_Listctl,string Sql)
+		{
+			
+			RunSql(Sql,out ds);
+			
+			if (ctl_Listctl is Repeater)
+			{
+				((Repeater)ctl_Listctl).DataSource=ds;
+				((Repeater)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataList)
+			{
+				((DataList)ctl_Listctl).DataSource=ds;
+				((DataList)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is DataGrid)
+			{
+
+				((DataGrid)ctl_Listctl).DataSource=ds;
+				if(ds!=null&&ds.Tables.Count!=0)
+				{
+					((DataGrid)ctl_Listctl).DataMember=ds.Tables[0].TableName.ToString();
+				}
+				((DataGrid)ctl_Listctl).DataBind();
+			}
+			if (ctl_Listctl is UltraWebGrid)
+			{
+				((UltraWebGrid)ctl_Listctl).DataSource=ds;
+				((UltraWebGrid)ctl_Listctl).DataBind();
+			}
+			
+			//AspNetPager1.CustomInfoText="当前页/总页数:"+AspNetPager1.CurrentPageIndex+"/"+AspNetPager1.PageCount+",每页记录:"+AspNetPager1.PageSize;
+		}
+
+		/// <summary>
+		/// 绑定DropDownList，CheckBoxList，RadioButtonList，ListBox控件并选中它值
+		/// </summary>
+		/// <param name="Sql">存储过程名称</param>
+		/// <param name="prams">给存储过程传递传输SqlParameter对象</param>
+		/// <param name="id">数据库字段,Value值</param>
+		/// <param name="name">数据库字段,Text值</param>
+		/// <param name="strValueField">选中值,比如"1","1,2"</param>
+		/// <param name="listctrl">DropDownList，CheckBoxList，RadioButtonList，ListBox控件id值</param>
+		/// <param name="type">类型,比如"value"或者"text"</param>
+		public void SelBindListCtrl(string Sql,string id,string name,string strValueField,Control listctrl,string type)
+		{
+			// ＝＝＝绑定列表控件＝＝＝
+			BindCtrl(Sql,id,name,listctrl);
+			switch (type)
+			{
+					//＝＝＝要选择的是value＝＝＝
+				case "value":
+				{
+					if (listctrl is DropDownList)
+					{
+						((DropDownList)listctrl).Items[0].Selected=false;
+						for (int i=0;i<((DropDownList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField==((DropDownList)listctrl).Items[i].Value)
+							{
+								((DropDownList)listctrl).Items[i].Selected=true;
+								break;
+							}
+						}
+					}
+					//＝＝＝CheckBoxList＝＝＝
+					if (listctrl is CheckBoxList)
+					{
+						for (int i=0;i<((CheckBoxList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField.IndexOf(((CheckBoxList)listctrl).Items[i].Value)!=-1)
+							{
+								((CheckBoxList)listctrl).Items[i].Selected=true;
+							}
+						}
+					}
+					//＝＝＝RadioButtonList＝＝＝
+					if (listctrl is RadioButtonList)
+					{
+						((RadioButtonList)listctrl).Items[0].Selected=false;
+						for (int i=0;i<((RadioButtonList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField==((RadioButtonList)listctrl).Items[i].Value)
+							{
+								((RadioButtonList)listctrl).Items[i].Selected=true;
+								break;
+							}
+						}
+					}
+					//＝＝＝ListBox＝＝＝
+					if (listctrl is ListBox)
+					{
+						for (int i=0;i<((ListBox)listctrl).Items.Count;i++) 
+						{
+							if (strValueField.IndexOf(((ListBox)listctrl).Items[i].Value)!=-1)
+							{
+								((ListBox)listctrl).Items[i].Selected=true;
+							}
+						}
+					}
+					break;
+				}
+					//＝＝＝要选择的是Text＝＝＝
+				case "text":
+				{
+					if (listctrl is DropDownList)
+					{
+						((DropDownList)listctrl).Items[0].Selected=false;
+						for (int i=0;i<((DropDownList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField==((DropDownList)listctrl).Items[i].Text)
+							{
+								((DropDownList)listctrl).Items[i].Selected=true;
+								break;
+							}
+						}
+					}
+					//＝＝＝CheckBoxList＝＝＝
+					if (listctrl is CheckBoxList)
+					{
+						for (int i=0;i<((CheckBoxList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField.IndexOf(((CheckBoxList)listctrl).Items[i].Text)!=-1)
+							{
+								((CheckBoxList)listctrl).Items[i].Selected=true;
+							}
+						}
+					}
+					//＝＝＝RadioButtonList＝＝＝
+					if (listctrl is RadioButtonList)
+					{
+						((RadioButtonList)listctrl).Items[0].Selected=false;
+						for (int i=0;i<((RadioButtonList)listctrl).Items.Count;i++) 
+						{
+							if (strValueField==((RadioButtonList)listctrl).Items[i].Text)
+							{
+								((RadioButtonList)listctrl).Items[i].Selected=true;
+								break;
+							}
+						}
+					}
+					//＝＝＝ListBox＝＝＝
+					if (listctrl is ListBox)
+					{
+						for (int i=0;i<((ListBox)listctrl).Items.Count;i++) 
+						{
+							if (strValueField.IndexOf(((ListBox)listctrl).Items[i].Text)!=-1)
+							{
+								((ListBox)listctrl).Items[i].Selected=true;
+							}
+						}
+					}
+					break;
+				}
+			}
+		}
+		#endregion
+		#endregion 
+
+	}
+
+	
+}

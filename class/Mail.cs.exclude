@@ -1,0 +1,792 @@
+using System.Xml;
+using System;
+using System.ComponentModel;
+using System.Web;
+using System.Collections;
+using System.Net.Sockets;
+using System.IO;
+using System.Text;
+
+namespace CRM
+{
+	public enum EmailAuthMode
+	{
+		No_Authentication,
+		User_LOGIN
+	}
+
+	public enum EmailBodyFormat
+	{
+		Plain_Text,
+		HTML
+	}
+
+	public enum EmailPriority
+	{
+		// Fields
+		Height = 1,
+		Low = 5,
+		Normal = 3
+	}
+
+	public enum SendMode
+	{
+		// Fields
+		Blind_Copy = 3,
+		Carbon_Copy = 2,
+		Normal = 1
+	}
+
+	public class SmtpMail : Component
+	{
+		// Fields
+		private string _Author;
+		private string _Body;
+		private EmailBodyFormat _BodyFormat;
+		private string _CharSet;
+		private string _ErrorMessage;
+		private string _ESMTP_Account;
+		private EmailAuthMode _ESMTP_AuthMode;
+		private string _ESMTP_Password;
+		private ArrayList _filename;
+		private string _From;
+		private string _FromAddr;
+		private int _MailPort;
+		private string _MailServer;
+		private EmailPriority _Priority;
+		private string _ReplyTo;
+		private string _Subject;
+		private string _Version;
+		private string _WebSite;
+		private string enter;
+		private Hashtable ErrCodeHT;
+		private string logs;
+		private NetworkStream ns;
+		private Hashtable Recipient;
+		private Hashtable RecipientBCC;
+		private int RecipientBCCNum;
+		private Hashtable RecipientCC;
+		private int RecipientCCNum;
+		public string RecipientName;
+		private int RecipientNum;
+		private Hashtable RightCodeHT;
+		private TcpClient tc;
+
+
+		[Category("UNTSoft"), Bindable(false), Description("\u63a7\u4ef6\u4f5c\u8005\uff0c\u4e3a\u53ea\u8bfb\u5c5e\u6027")]
+		public string Author
+		{
+			get
+			{
+				return this._Author;
+			}
+		}
+ 
+		[Category("Data"), Description("\u90ae\u4ef6\u7684\u53d1\u9001\u6b63\u6587"), Bindable(false)]
+		public string Body
+		{
+			get
+			{
+				return this._Body;
+			}
+			set
+			{
+				this._Body = value;
+			}
+		}
+ 
+		[Category("Data"), Description("\u90ae\u4ef6\u7684\u53d1\u9001\u683c\u5f0f"), Bindable(false)]
+		public EmailBodyFormat BodyFormat
+		{
+			get
+			{
+				return this._BodyFormat;
+			}
+			set
+			{
+				this._BodyFormat = value;
+			}
+		}
+ 
+		[Category("Data"), Bindable(false), Description("\u53d1\u9001\u90ae\u4ef6\u7684\u5b57\u7b26\u96c6\uff0c\u9ed8\u8ba4\u4e3a\"GB2312\"")]
+		public string CharSet
+		{
+			get
+			{
+				return this._CharSet;
+			}
+			set
+			{
+				this._CharSet = value;
+			}
+		}
+ 
+		[Description("\u90ae\u4ef6\u7684\u9519\u8bef\u53cd\u9988"), Category("Data"), Bindable(false)]
+		public string ErrorMessage
+		{
+			get
+			{
+				return this._ErrorMessage;
+			}
+		}
+ 
+		[Bindable(false), Category("Data"), Description("\u90ae\u4ef6\u7684\u53d1\u9001\u4eba\u7684\u9a8c\u8bc1\u5e10\u53f7")]
+		public string ESMTP_Account
+		{
+			get
+			{
+				return this._ESMTP_Account;
+			}
+			set
+			{
+				if (value.Trim() != "")
+				{
+					this._ESMTP_Account = value.Trim();
+				}
+				else
+				{
+					this._ESMTP_Account = "";
+					this._ESMTP_AuthMode = EmailAuthMode.No_Authentication;
+				}
+			}
+		}
+ 
+		[Description("\u90ae\u4ef6\u7684\u53d1\u9001\u65b9\u5f0f\uff0cNo_Authentication \u4e3a\u4e0d\u9700\u8981\u8ba4\u8bc1\uff0cUser_LOGIN \u4e3a\u9700\u8981\u8ba4\u8bc1"), Bindable(false), Category("Data")]
+		public EmailAuthMode ESMTP_AuthMode
+		{
+			get
+			{
+				return this._ESMTP_AuthMode;
+			}
+			set
+			{
+				this._ESMTP_AuthMode = value;
+			}
+		}
+ 
+		[Category("Data"), Bindable(false), Description("\u90ae\u4ef6\u53d1\u9001\u7684\u9a8c\u8bc1\u5bc6\u7801")]
+		public string ESMTP_PassWord
+		{
+			get
+			{
+				return this._ESMTP_Password;
+			}
+			set
+			{
+				this._ESMTP_Password = value;
+			}
+		}
+ 
+		[Bindable(false), Category("Data"), Description("\u90ae\u4ef6\u7684\u53d1\u9001\u4eba\u540d\u79f0")]
+		public string From
+		{
+			get
+			{
+				return this._From;
+			}
+			set
+			{
+				this._From = value;
+			}
+		}
+ 
+		[Category("Data"), Description("\u90ae\u4ef6\u7684\u53d1\u9001\u4eba\u5730\u5740"), Bindable(false)]
+		public string FromAddr
+		{
+			get
+			{
+				return this._FromAddr;
+			}
+			set
+			{
+				this._FromAddr = value;
+			}
+		}
+ 
+		public string Logs
+		{
+			get
+			{
+				return this.logs;
+			}
+		}
+ 
+		[Category("Data"), Bindable(false), Description("\u53d1\u9001\u90ae\u4ef6\u7684\u7aef\u53e3\u53f7\uff0c\u9ed8\u8ba4\u4e3a25")]
+		public int MailPort
+		{
+			get
+			{
+				return this._MailPort;
+			}
+			set
+			{
+				this._MailPort = value;
+			}
+		}
+ 
+		[Bindable(false), Description("\u90ae\u4ef6\u53d1\u9001\u670d\u52a1\u5668\u5730\u5740"), Category("Data")]
+		public string MailServer
+		{
+			get
+			{
+				return this._MailServer;
+			}
+			set
+			{
+				this._MailServer = value;
+			}
+		}
+ 
+		[Category("Data"), Description("\u90ae\u4ef6\u7684\u4f18\u5148\u7ea7\u522b"), Bindable(false)]
+		public EmailPriority Priority
+		{
+			get
+			{
+				return this._Priority;
+			}
+			set
+			{
+				this._Priority = value;
+			}
+		}
+ 
+		[Description("\u90ae\u4ef6\u7684\u56de\u590d\u5730\u5740"), Bindable(false), Category("Data")]
+		public string ReplayTo
+		{
+			get
+			{
+				return this._ReplyTo;
+			}
+			set
+			{
+				this._ReplyTo = value;
+			}
+		}
+ 
+		[Description("\u90ae\u4ef6\u7684\u53d1\u9001\u4e3b\u9898"), Bindable(false), Category("Data")]
+		public string Subject
+		{
+			get
+			{
+				return this._Subject;
+			}
+			set
+			{
+				this._Subject = value;
+			}
+		}
+ 
+		[Description("\u63a7\u4ef6\u7684\u7248\u672c\uff0c\u4e3a\u53ea\u8bfb\u5c5e\u6027"), Category("UNTSoft"), Bindable(false)]
+		public string Version
+		{
+			get
+			{
+				return this._Version;
+			}
+		}
+ 
+		[Bindable(false), Category("UNTSoft"), Description("\u63a7\u4ef6\u7684\u7ad9\u70b9\uff0c\u4e3a\u53ea\u8bfb\u5c5e\u6027")]
+		public string WebSite
+		{
+			get
+			{
+				return this._WebSite;
+			}
+		}
+ 
+
+		public SmtpMail()
+		{
+			this._Version = "1.0";
+			this._Author = "Unitech IT Co., Ltd.";
+			this._WebSite = "http://www.untsoft.com.cn";
+			this._CharSet = "GB2312";
+			this._MailPort = 0x19;
+			this._From = "";
+			this._FromAddr = "";
+			this._ReplyTo = "";
+			this._MailServer = "";
+			this._filename = new ArrayList();
+			this._ESMTP_AuthMode = EmailAuthMode.No_Authentication;
+			this._ESMTP_Account = "";
+			this._ESMTP_Password = "";
+			this._Subject = "";
+			this._BodyFormat = EmailBodyFormat.Plain_Text;
+			this._Body = "";
+			this.Recipient = new Hashtable();
+			this.RecipientBCC = new Hashtable();
+			this.RecipientCC = new Hashtable();
+			this._Priority = EmailPriority.Normal;
+			this.logs = "";
+			this.enter = "\r\n";
+			this.ErrCodeHT = new Hashtable();
+			this.RightCodeHT = new Hashtable();
+			this.RecipientName = "";
+			this.RecipientNum = 0;
+			this.RecipientBCCNum = 0;
+			this.RecipientCCNum = 0;
+		}
+
+ 
+		public void AddAttachment(string[] filename)
+		{
+			for (int num1 = 0; num1 < filename.Length; num1++)
+			{
+				this.AddAttachment(filename[num1]);
+			}
+		}
+
+ 
+		public void AddAttachment(string filename)
+		{
+			FileInfo info1 = new FileInfo(filename);
+			if (!info1.Exists)
+			{
+				throw new Exception(filename + "\u4e0d\u5b58\u5728!");
+			}
+			if (!this._filename.Contains(filename))
+			{
+				this._filename.Add(filename);
+			}
+		}
+
+ 
+		public bool AddRecipient(string str, SendMode sendMode)
+		{
+			str = str.Trim();
+			if (((str != null) && (str != "")) && (str.IndexOf("@") != -1))
+			{
+				switch (sendMode)
+				{
+					case SendMode.Normal:
+						this.Recipient.Add(this.RecipientNum, str);
+						this.RecipientNum++;
+						break;
+
+					case SendMode.Carbon_Copy:
+						this.RecipientCC.Add(this.RecipientCCNum, str);
+						this.RecipientCCNum++;
+						break;
+
+					case SendMode.Blind_Copy:
+						this.RecipientBCC.Add(this.RecipientBCCNum, str);
+						this.RecipientBCCNum++;
+						break;
+				}
+			}
+			return true;
+		}
+
+ 
+		public bool AddRecipient(string[] str, SendMode sendMode)
+		{
+			for (int num1 = 0; num1 < str.Length; num1++)
+			{
+				if (!this.AddRecipient(str[num1], sendMode))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+ 
+		private string Base64Decode(string dstr)
+		{
+			byte[] buffer1 = Convert.FromBase64String(dstr);
+			return Encoding.Default.GetString(buffer1);
+		}
+
+ 
+		private string Base64Encode(string estr)
+		{
+			byte[] buffer1 = Encoding.Default.GetBytes(estr);
+			return Convert.ToBase64String(buffer1);
+		}
+
+ 
+		private string Base64Encode(byte[] ebyte)
+		{
+			return Convert.ToBase64String(ebyte);
+		}
+
+ 
+		public void Clear()
+		{
+			this._ErrorMessage = "";
+			this._filename.Clear();
+			this.Recipient.Clear();
+			this.RecipientBCC.Clear();
+			this.RecipientCC.Clear();
+			this.RecipientBCCNum = 0;
+			this.RecipientCCNum = 0;
+			this.RecipientNum = 0;
+		}
+
+ 
+		private bool Dialog(string[] Command, string errstr)
+		{
+			for (int num1 = 0; num1 < Command.Length; num1++)
+			{
+				if (!this.Dialog(Command[num1], ""))
+				{
+					this._ErrorMessage = this._ErrorMessage + this.enter;
+					this._ErrorMessage = this._ErrorMessage + errstr;
+					return false;
+				}
+			}
+			return true;
+		}
+
+ 
+		private bool Dialog(ArrayList Command, string errstr)
+		{
+			for (int num1 = 0; num1 < Command.Count; num1++)
+			{
+				if (!this.Dialog(Command[num1].ToString(), ""))
+				{
+					this._ErrorMessage = this._ErrorMessage + this.enter;
+					this._ErrorMessage = this._ErrorMessage + errstr;
+					return false;
+				}
+			}
+			return true;
+		}
+
+ 
+		private bool Dialog(string Command, string errstr)
+		{
+			string text1,text2="";
+			if ((Command == null) || (Command.Trim() == ""))
+			{
+				return true;
+			}
+			if (this.SendCommand(Command))
+			{
+				try
+				{
+					text1 = this.RecvResponse();
+					if (text1 == "false")
+					{
+						return false;
+					}
+//					if(text1.Trim ()!="")
+//					{
+						text2 = text1.Substring(0, 3);
+//					}
+					if (this.RightCodeHT[text2] != null)
+					{
+						return true;
+					}
+					if (this.ErrCodeHT[text2] != null)
+					{
+						this._ErrorMessage = this._ErrorMessage + text2 + this.ErrCodeHT[text2].ToString();
+						this._ErrorMessage = this._ErrorMessage + this.enter;
+					}
+					else
+					{
+						this._ErrorMessage = this._ErrorMessage + text1;
+					}
+					this._ErrorMessage = this._ErrorMessage + errstr;
+				}
+				catch ( Exception ex )
+				{
+					this._ErrorMessage = this._ErrorMessage + ex.Message;
+				}
+			}
+			return false;
+		}
+
+ 
+		private string RecvResponse()
+		{
+			int num1;
+			string text1 = "";
+			byte[] buffer1 = new byte[0x400];
+			try
+			{
+				System.Threading.Thread.Sleep(500);
+				num1 = this.ns.Read(buffer1, 0, buffer1.Length);
+			}
+			catch ( Exception ex )
+			{
+				this._ErrorMessage = "\u7f51\u7edc\u8fde\u63a5\u9519\u8bef" + ex.Message;
+				return "false";
+			}
+			if (num1 != 0)
+			{
+				text1 = Encoding.Default.GetString(buffer1).Substring(0, num1);
+				text1 = text1.Replace( "\r\n", "" );
+				text1 = text1.Trim();
+			
+				this.logs = this.logs + text1;
+			}
+			else
+			{
+				return "";
+			}
+			return text1;
+		}
+
+ 
+		public bool Send()
+		{
+			if (this.Recipient.Count == 0)
+			{
+				this._ErrorMessage = "\u6536\u4ef6\u4eba\u5217\u8868\u4e0d\u80fd\u4e3a\u7a7a";
+				return false;
+			}
+			if (this.RecipientName == "")
+			{
+				this.RecipientName = this.Recipient[0].ToString();
+			}
+			if (this._MailServer.Trim() == "")
+			{
+				this._ErrorMessage = "\u5fc5\u987b\u6307\u5b9aSMTP\u670d\u52a1\u5668";
+				return false;
+			}
+			return this.SendEmail();
+		}
+
+ 
+		private bool SendCommand(string Command)
+		{
+			if ((Command != null) && (Command.Trim() != ""))
+			{
+				this.logs = this.logs + Command;
+				byte[] buffer1 = Encoding.Default.GetBytes(Command);
+				try
+				{
+					this.ns.Write(buffer1, 0, buffer1.Length);
+				}
+				catch ( Exception ex )
+				{
+					this._ErrorMessage = "\u7f51\u7edc\u8fde\u63a5\u9519\u8bef" + ex.Message;
+					return false;
+				}
+			}
+			return true;
+		}
+
+ 
+		private bool SendEmail()
+		{
+			string text1;
+			string text3;
+			this._ErrorMessage = "";
+			try
+			{
+				this.tc = new TcpClient(this._MailServer, this._MailPort);
+			}
+			catch (Exception exception1)
+			{
+				this._ErrorMessage = exception1.ToString();
+				return false;
+			}
+			this.ns = this.tc.GetStream();
+			this.SMTPCodeAdd();
+			if (this.RightCodeHT[this.RecvResponse().Substring(0, 3)] == null)
+			{
+				this._ErrorMessage = "\u7f51\u7edc\u8fde\u63a5\u5931\u8d25";
+				return false;
+			}
+			if (this._ESMTP_AuthMode == EmailAuthMode.User_LOGIN)
+			{
+				string[] textArray1 = new string[] { "EHLO " + this._MailServer + this.enter, "AUTH LOGIN" + this.enter, this.Base64Encode(this._ESMTP_Account) + this.enter, this.Base64Encode(this._ESMTP_Password) + this.enter };
+				if (!this.Dialog(textArray1, "SMTP\u670d\u52a1\u5668\u9a8c\u8bc1\u5931\u8d25\uff0c\u8bf7\u6838\u5bf9\u7528\u6237\u540d\u548c\u5bc6\u7801\u3002"))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				text1 = "HELO " + this._MailServer + this.enter;
+				if (!this.Dialog(text1, ""))
+				{
+					return false;
+				}
+			}
+			if (this._FromAddr == "")
+			{
+				this._ErrorMessage = "\u53d1\u4ef6\u4eba\u5730\u5740\u4e0d\u80fd\u4e3a\u7a7a\uff01";
+				return false;
+			}
+			text1 = "MAIL FROM:" + this._From + "<" + this._FromAddr + ">" + this.enter;
+			if (!this.Dialog(text1, "\u53d1\u4ef6\u4eba\u5730\u5740\u9519\u8bef\uff0c\u6216\u4e0d\u80fd\u4e3a\u7a7a"))
+			{
+				return false;
+			}
+			ArrayList list1 = new ArrayList();
+			for (int num1 = 0; num1 < this.Recipient.Count; num1++)
+			{
+				list1.Add("RCPT TO:<" + this.Recipient[num1].ToString() + ">" + this.enter);
+			}
+			if (!this.Dialog(list1, "\u6536\u4ef6\u4eba\u5730\u5740\u6709\u8bef"))
+			{
+				return false;
+			}
+			list1 = new ArrayList();
+			for (int num2 = 0; num2 < this.RecipientCC.Count; num2++)
+			{
+				list1.Add("RCPT TO:<" + this.RecipientCC[num2].ToString() + ">" + this.enter);
+			}
+			if (!this.Dialog(list1, "\u6284\u9001\u4eba\u5730\u5740\u6709\u8bef"))
+			{
+				return false;
+			}
+			list1 = new ArrayList();
+			for (int num3 = 0; num3 < this.RecipientBCC.Count; num3++)
+			{
+				list1.Add("RCPT TO:<" + this.RecipientBCC[num3].ToString() + ">" + this.enter);
+			}
+			if (!this.Dialog(list1, "\u5bc6\u4ef6\u6536\u4ef6\u4eba\u5730\u5740\u6709\u8bef"))
+			{
+				return false;
+			}
+			text1 = "DATA" + this.enter;
+			if (!this.Dialog(text1, ""))
+			{
+				return false;
+			}
+			text1 = "From:" + this._From + "<" + this._FromAddr + ">" + this.enter;
+			if (this._ReplyTo.Trim() != "")
+			{
+				text1 = text1 + "Reply-To: " + this._ReplyTo + this.enter;
+			}
+			text1 = text1 + "To:";
+			for (int num4 = 0; num4 < this.Recipient.Count; num4++)
+			{
+				text3 = text1;
+				text1 = text3 + this.Recipient[num4].ToString() + "<" + this.Recipient[num4].ToString() + ">,";
+			}
+			text1 = text1 + this.enter + "CC:";
+			for (int num5 = 0; num5 < this.RecipientCC.Count; num5++)
+			{
+				text3 = text1;
+				text1 = text3 + this.RecipientCC[num5].ToString() + "<" + this.RecipientCC[num5].ToString() + ">,";
+			}
+			text1 = text1 + this.enter;
+			if (this._CharSet == "")
+			{
+				text1 = text1 + "Subject:" + this._Subject + this.enter;
+			}
+			else
+			{
+				text3 = text1;
+				text1 = text3 + "Subject:=?" + this._CharSet.ToUpper() + "?B?" + this.Base64Encode(this._Subject) + "?=" + this.enter;
+			}
+			text1 = text1 + "X-Priority:" + this._Priority.ToString() + this.enter;
+			text1 = text1 + "X-MSMail-Priority:" + this._Priority.ToString() + this.enter;
+			text1 = text1 + "Importance:" + this._Priority.ToString() + this.enter;
+			text1 = text1 + "X-Mailer: wakiMail V1.0" + this.enter;
+			text1 = text1 + "MIME-Version: 1.0" + this.enter;
+			if (this._filename.Count > 0)
+			{
+				text1 = text1 + "Content-Type:multipart/mixed;" + this.enter;
+				text1 = text1 + "\tboundary=\"========wakiMailNextPart0306240511========\"" + this.enter + this.enter;
+				text1 = text1 + "This message is in MIME format. Since your mail reader does not understand" + this.enter;
+				text1 = text1 + "this format, some or all of this message may not be legible." + this.enter + this.enter;
+				text1 = text1 + "--========wakiMailNextPart0306240511========" + this.enter;
+			}
+			if (this._BodyFormat == EmailBodyFormat.HTML)
+			{
+				text1 = text1 + "Content-Type: text/html;" + this.enter;
+			}
+			else
+			{
+				text1 = text1 + "Content-Type: text/plain;" + this.enter;
+			}
+			if (this._CharSet == "")
+			{
+				text1 = text1 + "\tcharset=\"iso-8859-1\"" + this.enter;
+			}
+			else
+			{
+				text3 = text1;
+				text1 = text3 + "\tcharset=\"" + this._CharSet.ToLower() + "\"" + this.enter;
+			}
+			text1 = text1 + "Content-Transfer-Encoding: base64" + this.enter;
+			text1 = text1 + this.enter + this.enter;
+			text1 = text1 + this.Base64Encode(this._Body) + this.enter;
+			if (this._filename.Count > 0)
+			{
+				string text2 = "";
+				for (int num6 = 0; num6 < this._filename.Count; num6++)
+				{
+					FileInfo info1 = new FileInfo(this._filename[num6].ToString());
+					if (info1.Exists)
+					{
+						string[] textArray2 = this._filename[num6].ToString().Split(new char[] { '\\' });
+						text2 = textArray2[textArray2.GetUpperBound(0)];
+						text1 = text1 + this.enter + this.enter;
+						text1 = text1 + "--========wakiMailNextPart0306240511========" + this.enter;
+						FileStream stream1 = null;
+						stream1 = new FileStream(this._filename[num6].ToString(), FileMode.Open, FileAccess.Read);
+						byte[] buffer1 = new byte[(int) stream1.Length];
+						stream1.Read(buffer1, 0, (int) stream1.Length);
+						text1 = text1 + "Content-Type: application/octet-stream;" + this.enter;
+						text3 = text1;
+						text1 = text3 + "  name=\"" + text2 + "\"" + this.enter;
+						text1 = text1 + "Content-Transfer-Encoding: base64" + this.enter;
+						text1 = text1 + "Content-Disposition: attachment;" + this.enter;
+						text3 = text1;
+						text1 = text3 + "  filename=\"" + text2 + "\"" + this.enter + this.enter;
+						text1 = text1 + this.Base64Encode(buffer1) + this.enter;
+					}
+				}
+				text1 = text1 + this.enter + this.enter;
+				text1 = text1 + "--========wakiMailNextPart0306240511========--" + this.enter;
+			}
+			text1 = text1 + this.enter + "." + this.enter;
+			if (!this.Dialog(text1, "\u9519\u8bef\u4fe1\u4ef6\u4fe1\u606f"))
+			{
+				return false;
+			}
+			text1 = "QUIT" + this.enter;
+			if (!this.Dialog(text1, "\u65ad\u5f00\u8fde\u63a5\u65f6\u9519\u8bef"))
+			{
+				return false;
+			}
+//			this.SendCommand( text1 );
+			this._filename.Clear();
+			this.ns.Close();
+			this.tc.Close();
+			return true;
+		}
+
+ 
+		private void SMTPCodeAdd()
+		{
+			this.ErrCodeHT["421"] = "\u670d\u52a1\u672a\u5c31\u7eea\uff0c\u5173\u95ed\u4f20\u8f93\u4fe1\u9053";
+			this.ErrCodeHT["432"] = "\u9700\u8981\u4e00\u4e2a\u5bc6\u7801\u8f6c\u6362";
+			this.ErrCodeHT["450"] = "\u8981\u6c42\u7684\u90ae\u4ef6\u64cd\u4f5c\u672a\u5b8c\u6210\uff0c\u90ae\u7bb1\u4e0d\u53ef\u7528\uff08\u4f8b\u5982\uff0c\u90ae\u7bb1\u5fd9\uff09";
+			this.ErrCodeHT["451"] = "\u653e\u5f03\u8981\u6c42\u7684\u64cd\u4f5c\uff1b\u5904\u7406\u8fc7\u7a0b\u4e2d\u51fa\u9519";
+			this.ErrCodeHT["452"] = "\u7cfb\u7edf\u5b58\u50a8\u4e0d\u8db3\uff0c\u8981\u6c42\u7684\u64cd\u4f5c\u672a\u6267\u884c";
+			this.ErrCodeHT["454"] = "\u4e34\u65f6\u8ba4\u8bc1\u5931\u8d25";
+			this.ErrCodeHT["500"] = "\u90ae\u7bb1\u5730\u5740\u9519\u8bef";
+			this.ErrCodeHT["501"] = "\u53c2\u6570\u683c\u5f0f\u9519\u8bef";
+			this.ErrCodeHT["502"] = "\u547d\u4ee4\u4e0d\u53ef\u5b9e\u73b0";
+			this.ErrCodeHT["503"] = "\u670d\u52a1\u5668\u9700\u8981SMTP\u9a8c\u8bc1";
+			this.ErrCodeHT["504"] = "\u547d\u4ee4\u53c2\u6570\u4e0d\u53ef\u5b9e\u73b0";
+			this.ErrCodeHT["530"] = "\u9700\u8981\u8ba4\u8bc1";
+			this.ErrCodeHT["534"] = "\u8ba4\u8bc1\u673a\u5236\u8fc7\u4e8e\u7b80\u5355";
+			this.ErrCodeHT["538"] = "\u5f53\u524d\u8bf7\u6c42\u7684\u8ba4\u8bc1\u673a\u5236\u9700\u8981\u52a0\u5bc6";
+			this.ErrCodeHT["550"] = "\u8981\u6c42\u7684\u90ae\u4ef6\u64cd\u4f5c\u672a\u5b8c\u6210\uff0c\u90ae\u7bb1\u4e0d\u53ef\u7528\uff08\u4f8b\u5982\uff0c\u90ae\u7bb1\u672a\u627e\u5230\uff0c\u6216\u4e0d\u53ef\u8bbf\u95ee\uff09";
+			this.ErrCodeHT["551"] = "\u7528\u6237\u975e\u672c\u5730\uff0c\u8bf7\u5c1d\u8bd5<forward-path>";
+			this.ErrCodeHT["552"] = "\u8fc7\u91cf\u7684\u5b58\u50a8\u5206\u914d\uff0c\u8981\u6c42\u7684\u64cd\u4f5c\u672a\u6267\u884c";
+			this.ErrCodeHT["553"] = "\u90ae\u7bb1\u540d\u4e0d\u53ef\u7528\uff0c\u8981\u6c42\u7684\u64cd\u4f5c\u672a\u6267\u884c\uff08\u4f8b\u5982\u90ae\u7bb1\u683c\u5f0f\u9519\u8bef\uff09";
+			this.RightCodeHT["220"] = "\u670d\u52a1\u5c31\u7eea";
+			this.RightCodeHT["221"] = "\u670d\u52a1\u5173\u95ed\u4f20\u8f93\u4fe1\u9053";
+			this.RightCodeHT["235"] = "\u9a8c\u8bc1\u6210\u529f";
+			this.RightCodeHT["250"] = "\u8bf7\u6c42\u7684\u90ae\u4ef6\u64cd\u4f5c\u5b8c\u6210";
+			this.RightCodeHT["251"] = "\u7528\u6237\u975e\u672c\u5730\uff0c\u5c06\u8f6c\u53d1\u5411<forward-path>";
+			this.RightCodeHT["334"] = "\u670d\u52a1\u5668\u54cd\u5e94\u9a8c\u8bc1Base64\u5b57\u7b26\u4e32";
+			this.RightCodeHT["354"] = "\u5f00\u59cb\u90ae\u4ef6\u8f93\u5165\uff0c\u4ee5<CRLF>.<CRLF>\u7ed3\u675f";
+		}
+
+ 
+
+	}
+}
+
+ 

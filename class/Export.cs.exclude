@@ -1,0 +1,590 @@
+using System;
+using System.Data;
+using System.Drawing;
+using System.Data.SqlClient;
+using Excel;
+using Word;
+using System.IO;
+
+namespace CRM
+{
+	/// <summary>
+	/// 把数据导入到.doc、.txt、.xls文件中
+	/// </summary>
+	public class Export:DB
+	{
+		private const string DATAWORDPATH = "D:\\项目\\CRM\\folder\\doc\\datadoc\\";
+		private const string IMAGEWORDPATH = "D:\\项目\\CRM\\folder\\doc\\imagedoc\\";
+		private const string IMAGEPATH = "D:\\项目\\CRM\\folder\\image\\";
+		private const string EXCELPATH = "D:\\项目\\CRM\\folder\\excel\\";
+		private const string TXTPATH = "D:\\项目\\CRM\\folder\\txt\\";
+		private const string IMAGEPOSTFIX = ".bmp";
+		private const string WORDPOSTFIX = ".doc";
+		private const string EXCELPOSTFIX = ".xls";
+		private const string TXTPOSTFIX = ".txt";
+		private const int DATADISTANCE = 5;
+		private const int TABDISTANCE = 8;
+
+		public Export()
+		{
+			//
+			// TODO: 在此处添加构造函数逻辑
+			//
+		}
+		/// <summary>
+		/// 获得数据集Dataset用于调试
+		/// </summary>
+		/// <returns>Dataset</returns>
+		public DataSet GetData()
+		{
+			string sql="select dead_name,status_ccode,sex,dead_date,work_station,work_place from t_peo_info where over_flag='T' order by dead_name";
+			DataSet Ly_Ds=this.GetDs(sql);
+			return Ly_Ds;
+		}
+		/// <summary>
+		/// 把数据文件导入到.xls文件
+		/// </summary>
+		/// <param name="ds"></param>
+		public void ExportToExcel(DataSet ds)
+		{
+
+			if(ds.Tables.Count!=0)
+			{
+				//生成.xls文件完整路径名
+				string tempFileName = GetTempFileName();
+				object filename = EXCELPATH+tempFileName+EXCELPOSTFIX;
+				object Nothing = System.Reflection.Missing.Value;
+    
+				//创建excel文件，文件名用系统时间生成精确到毫秒
+//				Excel.Application myExcel = new Excel.ApplicationClass();
+				Excel.Application myExcel = new Excel.ApplicationClass();
+				myExcel.Application.Workbooks.Add(Nothing);
+
+				try
+				{
+					//把Dataset中的数据插入excel文件中
+					int totalCount = 0;
+					for(int k =0;k<ds.Tables.Count;k++)
+					{
+						int row = ds.Tables[k].Rows.Count;
+						int column = ds.Tables[k].Columns.Count;
+    
+						for(int i = 0;i<column;i++)
+						{
+							myExcel.Cells[totalCount+2,1+i] = ds.Tables[k].Columns[i].ColumnName;
+						}
+
+						for(int i = 0;i<row;i++)
+						{
+							for(int j =0;j<column;j++)
+							{
+								myExcel.Cells[totalCount+3+i,1+j] = "'" + ds.Tables[k].Rows[i][j].ToString();
+							}
+						}
+						totalCount = totalCount + row +4;
+					}
+
+					try
+					{
+						//保存excel文件到指定的目录下，文件名用系统时间生成精确到毫秒
+						myExcel.ActiveWorkbook.SaveAs(filename,Nothing,Nothing,Nothing,Nothing,Nothing,XlSaveAsAccessMode.xlExclusive,Nothing,Nothing,Nothing,Nothing);
+//						myExcel.ActiveWorkbook.SaveAs
+					}
+					catch
+					{
+//						System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+EXCELPATH+tempFileName+EXCELPOSTFIX);
+						return;
+					}
+					//让生成的excel文件可见
+					//myExcel.Visible = true;
+					myExcel.Quit();
+				}
+				catch(Exception e)
+				{
+//					System.Windows.Forms.MessageBox.Show("向excel文件中写入数据出错：  " + e.Message);
+				}
+			}
+			else
+			{
+//				System.Windows.Forms.MessageBox.Show("No Data");
+			}
+		}
+		/// <summary>
+		/// 把数据导入到.doc文件
+		/// </summary>
+		/// <param name="ds"></param>
+		public void ExportToWord(DataSet ds)
+		{
+			if(ds.Tables.Count!=0)
+			{   
+				string tempFileName = null;
+				object filename = null;
+    
+				object tableBehavior = Word.WdDefaultTableBehavior.wdWord9TableBehavior;
+				object autoFitBehavior = Word.WdAutoFitBehavior.wdAutoFitFixed;
+
+				object unit = Word.WdUnits.wdStory;
+				object extend = System.Reflection.Missing.Value;
+				object breakType = (int)Word.WdBreakType.wdSectionBreakNextPage;
+
+				object count = 1;
+				object character = Word.WdUnits.wdCharacter;
+
+				object Nothing =  System.Reflection.Missing.Value;
+    
+				//				try
+				//				{
+				tempFileName = GetTempFileName();
+
+				//生成.doc文件完整路径名
+				filename = DATAWORDPATH+tempFileName+WORDPOSTFIX;
+     
+				//创建一个word文件，文件名用系统时间生成精确到毫秒
+				Word.Application myWord= new Word.ApplicationClass();
+				Word._Document myDoc = new Word.DocumentClass();
+				myDoc = myWord.Documents.Add(ref Nothing,ref Nothing,ref Nothing,ref Nothing); 
+				myDoc.Activate();
+
+				//向把dataset中的表插入到word的文件中
+    
+				for(int totalTable = 0;totalTable<ds.Tables.Count;totalTable++)
+				{
+					myWord.Application.Selection.TypeText(ds.Tables[totalTable].TableName+"表的数据如下");
+					myWord.Application.Selection.TypeParagraph();     
+					myWord.Application.Selection.TypeParagraph();
+					Word.Range para = myWord.Application.Selection.Range;
+					myDoc.Tables.Add(para,ds.Tables[totalTable].Rows.Count+1,ds.Tables[totalTable].Columns.Count,ref tableBehavior,ref autoFitBehavior);
+					for(int column = 0; column<ds.Tables[totalTable].Columns.Count;column++)
+					{
+						myDoc.Tables.Item(totalTable+1).Cell(1,column+1).Range.InsertBefore(ds.Tables[0].Columns[column].ColumnName.Trim());
+					}    
+					for(int row = 0;row<ds.Tables[totalTable].Rows.Count;row++)
+					{
+						for(int column = 0;column<ds.Tables[totalTable].Columns.Count;column++)
+						{
+							myDoc.Tables.Item(totalTable+1).Cell(row+2,column+1).Range.InsertBefore(ds.Tables[totalTable].Rows[row][column].ToString().Trim());
+						}
+					}
+					myWord.Application.Selection.EndKey(ref unit,ref extend);
+					myWord.Application.Selection.TypeParagraph();
+					myWord.Application.Selection.TypeParagraph();
+					myWord.Application.Selection.InsertBreak(ref breakType);    
+				}
+				myWord.Application.Selection.TypeBackspace();
+				myWord.Application.Selection.Delete(ref character,ref count);
+				myWord.Application.Selection.HomeKey(ref unit,ref extend);
+    
+				//保存word文件到指定的目录下
+				//					try
+				//					{
+				myDoc.SaveAs(ref filename,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing);
+				myWord.Visible = true;
+				//					}
+				//					catch
+				//					{
+				////						System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+DATAWORDPATH+tempFileName+WORDPOSTFIX);
+				//						return;
+				//					}
+				//让生成的excel文件可见
+				myWord.Visible = true;
+				//				}
+				//				catch(Exception ex)
+				//				{
+				////					System.Windows.Forms.MessageBox.Show("向word文件中写入数据出错：  " + ex.Message);
+				//				}
+				//			}
+				//			else
+				//			{
+				////				System.Windows.Forms.MessageBox.Show("No Data");
+				//			}
+			}
+		}
+		/// <summary>
+		/// 把图片文件导入到.doc文件
+		/// </summary>
+		/// <param name="bp"></param>
+		public void ExportToWord(Bitmap bp)
+		{
+			string tempFileName = null;
+			string bmpPath = null;
+			object filename = null;
+			object Nothing = null;
+			tempFileName = GetTempFileName();
+
+ 
+			//生成.bmp文件完整路径名
+			bmpPath = IMAGEPATH+tempFileName+IMAGEPOSTFIX;
+
+			//生成.doc文件完整路径名
+			filename = IMAGEWORDPATH+tempFileName+WORDPOSTFIX;
+			Nothing = System.Reflection.Missing.Value;
+ 
+			//创建一个word文件，文件名用系统时间生成精确到毫秒
+			Word.Application myWord= new Word.ApplicationClass();
+			Word._Document myDoc = new Word.DocumentClass();
+			myDoc = myWord.Documents.Add(ref Nothing,ref Nothing,ref Nothing,ref Nothing);  
+
+			try
+			{
+				//把bitmap对象保存到系统所生成文件完整路径中
+				bp.Save(bmpPath);
+			}
+			catch
+			{
+//				System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+bmpPath);
+				return;
+			}
+  
+			try
+			{
+				//往word文件中插入图片
+				myDoc.InlineShapes.AddPicture(bmpPath,ref Nothing,ref Nothing,ref Nothing);
+			}
+			catch
+			{
+//				System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+bmpPath);
+				return;
+			}
+  
+			try
+			{
+				//保存word文件到指定的目录下
+				myDoc.SaveAs(ref filename,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing,ref Nothing);
+			}
+			catch
+			{
+//				System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+IMAGEWORDPATH+tempFileName+WORDPOSTFIX);
+				return;
+			}
+
+			//让生成的word文件可见
+			myWord.Visible = true;
+		}
+
+		/// <summary>
+		/// 把数据文件导入到.txt文件
+		/// </summary>
+		/// <param name="ds"></param>
+		public void ExportToTxt(DataSet ds)
+		{
+
+			if(ds.Tables.Count!=0)
+			{
+				string tempFileName = null;
+				tempFileName = GetTempFileName();
+
+  
+				//创建一个.txt文件，文件名用系统时间生成精确到毫秒
+				FileInfo file = new FileInfo(TXTPATH+tempFileName+TXTPOSTFIX);
+				StreamWriter textFile = null;
+				try
+				{
+					textFile = file.CreateText();
+				}
+				catch
+				{
+//					System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+TXTPATH+tempFileName+TXTPOSTFIX);
+					return;
+				} 
+
+				//把Dataset中的数据写入.txt文件中
+				for(int totaltable = 0;totaltable<ds.Tables.Count;totaltable++)
+				{
+					//统计dataset中当前表的行数
+					int row = ds.Tables[totaltable].Rows.Count;
+
+					//统计dataset中当前表的列数
+					int column = ds.Tables[totaltable].Columns.Count;
+
+					//用于统计当前表中每列记录中字符数最长的字符串的长度之和
+					int totalLength = 0;
+
+					//用于统计标题的长度（dataset中的表名的length+"表的数据如下"的length）
+					int titleLength = 0;
+
+					//统计每列记录中字符数最长的字符串的长度
+					int[] columnLength = new int[column];
+					for(int i = 0;i<column;i++)
+					{
+						columnLength[i] = ds.Tables[totaltable].Columns[i].ColumnName.ToString().Length;
+					}
+					for(int i = 0;i<row;i++)
+					{
+						for(int j = 0;j<column;j++)
+						{
+							if(ds.Tables[totaltable].Rows[i][j].ToString().Length>columnLength[j])
+							{
+								columnLength[j]=ds.Tables[totaltable].Rows[i][j].ToString().Length;
+							}
+						}
+					}
+
+
+					//统计当前表中每列记录中字符数最长的字符串的长度之和
+					for(int i = 0;i<column;i++)
+					{
+						totalLength = totalLength+columnLength[i]+DATADISTANCE;
+					}
+					totalLength = totalLength+2*TABDISTANCE-DATADISTANCE;
+
+					//统计标题的长度（dataset中的当前表名的length+"表的数据如下"的length）
+					titleLength = ds.Tables[totaltable].TableName.ToString().Length+"表的数据如下".Length*2;
+
+					//把标题写入.txt文件中
+					for(int i = 0;i<(int)((totalLength-titleLength)/2);i++)
+					{
+						textFile.Write(' ');
+					}
+					textFile.Write(ds.Tables[totaltable].TableName+"表的数据如下");
+					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+						textFile.Write('*');
+					}
+					textFile.WriteLine();
+					textFile.Write("\t");
+
+					//把dataset中当前表的字段名写入.txt文件中
+					for(int i = 0;i<column;i++)
+					{
+						textFile.Write(ds.Tables[totaltable].Columns[i].ColumnName.ToString());
+						for(int k = 0;k<columnLength[i]-ds.Tables[totaltable].Columns[i].ColumnName.ToString().Length+DATADISTANCE;k++)
+						{
+							textFile.Write(' ');
+						}
+					}
+					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+						textFile.Write('-');
+					}
+					textFile.WriteLine();
+					textFile.Write("\t");
+
+					//把dataset中当前表的数据写入.txt文件中
+					for(int i = 0;i<row;i++)
+					{
+						for(int j = 0;j<column;j++)
+						{
+							textFile.Write(ds.Tables[totaltable].Rows[i][j].ToString());
+							for(int k = 0;k<columnLength[j]-ds.Tables[totaltable].Rows[i][j].ToString().Length+DATADISTANCE;k++)
+							{
+								textFile.Write(' ');
+							}
+						}
+						textFile.WriteLine();
+						textFile.Write("\t");
+					}
+					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+						textFile.Write('-');
+					}
+					textFile.WriteLine();
+					textFile.WriteLine();
+					textFile.WriteLine();
+				}
+
+				//关闭当前的StreamWriter流
+				textFile.Close();
+//				System.Windows.Forms.MessageBox.Show("数据文件已保存到"+"   "+file.FullName);                 
+			}
+			else
+			{
+//				System.Windows.Forms.MessageBox.Show("No Data");
+			}
+		}
+		public void ExportToTxt(DataSet ds,string PeoType)
+		{
+
+			if(ds.Tables.Count!=0)
+			{
+				string tempFileName = null;
+				tempFileName = GetTempFileName();
+
+  
+				//创建一个.txt文件，文件名用系统时间生成精确到毫秒
+				FileInfo file = new FileInfo(TXTPATH+tempFileName+TXTPOSTFIX);
+				StreamWriter textFile = null;
+				try
+				{
+					textFile = file.CreateText();
+				}
+				catch
+				{
+					//System.Windows.Forms.MessageBox.Show("系统找不到指定目录下的文件：  "+TXTPATH+tempFileName+TXTPOSTFIX);
+					return;
+				} 
+
+				//把Dataset中的数据写入.txt文件中
+				for(int totaltable = 0;totaltable<ds.Tables.Count;totaltable++)
+				{
+					//统计dataset中当前表的行数
+					int row = ds.Tables[totaltable].Rows.Count;
+
+					//统计dataset中当前表的列数
+					int column = ds.Tables[totaltable].Columns.Count;
+
+					//用于统计当前表中每列记录中字符数最长的字符串的长度之和
+					int totalLength = 0;
+
+					//用于统计标题的长度（dataset中的表名的length+"表的数据如下"的length）
+					int titleLength = 0;
+
+					//统计每列记录中字符数最长的字符串的长度
+					int[] columnLength = new int[column];
+					for(int i = 0;i<column;i++)
+					{
+						columnLength[i] = ds.Tables[totaltable].Columns[i].ColumnName.ToString().Length;
+					}
+					for(int i = 0;i<row;i++)
+					{
+						for(int j = 0;j<column;j++)
+						{
+							if(ds.Tables[totaltable].Rows[i][j].ToString().Length>columnLength[j])
+							{
+								columnLength[j]=ds.Tables[totaltable].Rows[i][j].ToString().Length;
+							}
+						}
+					}
+
+
+					//统计当前表中每列记录中字符数最长的字符串的长度之和
+					for(int i = 0;i<column;i++)
+					{
+						totalLength = totalLength+columnLength[i]+DATADISTANCE;
+					}
+					totalLength = totalLength+2*TABDISTANCE-DATADISTANCE;
+
+					//统计标题的长度（dataset中的当前表名的length+"表的数据如下"的length）
+					titleLength = ds.Tables[totaltable].TableName.ToString().Length+"表的数据如下".Length*2;
+
+					//把标题写入.txt文件中
+					for(int i = 0;i<(int)((totalLength-titleLength)/2);i++)
+					{
+//						textFile.Write(' ');
+					}
+//					textFile.Write(ds.Tables[totaltable].TableName+"表的数据如下");
+//					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+//						textFile.Write('*');
+					}
+//					textFile.WriteLine();
+//					textFile.Write("\t");
+
+					//把dataset中当前表的字段名写入.txt文件中
+					for(int i = 0;i<column;i++)
+					{
+//						textFile.Write(ds.Tables[totaltable].Columns[i].ColumnName.ToString());
+						for(int k = 0;k<columnLength[i]-ds.Tables[totaltable].Columns[i].ColumnName.ToString().Length+DATADISTANCE;k++)
+						{
+//							textFile.Write(' ');
+						}
+					}
+//					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+//						textFile.Write('-');
+					}
+//					textFile.WriteLine();
+//					textFile.Write("\t");
+
+					//把dataset中当前表的数据写入.txt文件中
+					int [] TheLength=new int []
+					{
+						10,18,1,8,50,4
+					};
+					for(int i = 0;i<row;i++)
+					{
+						for(int j = 0;j<column;j++)
+						{
+							string Content=ds.Tables[totaltable].Rows[i][j].ToString();
+							if(j==3)//日期
+							{
+								DateTime dt=DateTime.Parse (Content);
+								string TheYear=dt.Year.ToString ();
+								string TheMonth=dt.Month.ToString ();
+								if(TheMonth.Length <2)
+								{
+									TheMonth="0"+TheMonth;
+								}
+								string TheDay=dt.Day.ToString ();
+								if(TheDay.Length <2)
+								{
+									TheDay="0"+TheDay;
+								}
+								Content=TheYear+TheMonth+TheDay;
+							}
+							textFile.Write(this.ContentForm(Content,TheLength[j]));
+//							textFile.Write(ds.Tables[totaltable].Rows[i][j].ToString());
+//							for(int k = 0;k<columnLength[j]-ds.Tables[totaltable].Rows[i][j].ToString().Length+DATADISTANCE;k++)
+//							{
+//								textFile.Write(' ');
+//							}
+						}
+						textFile.WriteLine();
+//						textFile.Write("\t");
+					}
+//					textFile.WriteLine();
+					for(int i = 0;i<totalLength;i++)
+					{
+//						textFile.Write('-');
+					}
+//					textFile.WriteLine();
+//					textFile.WriteLine();
+//					textFile.WriteLine();
+				}
+
+				//关闭当前的StreamWriter流
+				textFile.Close();
+				//				System.Windows.Forms.MessageBox.Show("数据文件已保存到"+"   "+file.FullName);                 
+			}
+			else
+			{
+				//				System.Windows.Forms.MessageBox.Show("No Data");
+			}
+		}
+
+		public string ContentForm(string Content,int FormLength)
+		{
+			int ContentLength=Content.Length ;
+			int a=FormLength-ContentLength;
+			string b="";
+			for(int x=0;x<a;x++)
+			{
+				b+=" ";
+			}
+			return Content+b;
+
+		}
+		public string GetTempFileName()
+		{
+			return DateTime.Now.ToString("yyyyMMddhhmmssfff");
+		}
+		/// <summary> 
+		/// 强制结束Word进程(垃圾回收) 
+		/// </summary> 
+		public void KillProcess(string Name) 
+		{ 
+			int ProceedingCount = 0; 
+			try 
+			{ 
+				System.Diagnostics.Process [] ProceddingCon = System.Diagnostics.Process.GetProcesses(); 
+				foreach(System.Diagnostics.Process IsProcedding in ProceddingCon) 
+				{ 
+					if(IsProcedding.ProcessName.ToUpper() == Name) 
+					{ 
+						ProceedingCount += 1; 
+						IsProcedding.Kill(); 
+					} 
+				} 
+			} 
+			catch(System.Exception err) 
+			{ 
+//				MessageBox.Show(err.Message + "\r" +"(" + err.Source + ")" + "\r" + err.StackTrace); 
+			} 
+		} 
+
+	}
+}
